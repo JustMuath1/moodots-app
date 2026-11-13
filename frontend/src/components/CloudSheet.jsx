@@ -14,7 +14,7 @@ const TX = {
     back: 'تغيير البريد', close: 'إغلاق', signout: 'تسجيل الخروج',
     account: 'الحساب', status: 'الاشتراك', link: 'الاتصال',
     active: 'فعّال', inactive: 'غير مشترك', connected: 'متصل', connecting: 'جارٍ الاتصال…', offline: 'غير متصل',
-    monthly: 'شهري', yearly: 'سنوي', until: 'حتى',
+    monthly: 'شهري', yearly: 'سنوي', lifetime: 'مدى الحياة', until: 'حتى',
     notSubscribed: 'تم ربط الجهاز، لكن لا يوجد اشتراك فعّال على هذا البريد بعد.',
     errors: {
       invalid_email: 'البريد غير صحيح.', rate_limited: 'انتظر قليلاً ثم أعد المحاولة.',
@@ -29,7 +29,7 @@ const TX = {
     back: 'Change email', close: 'Close', signout: 'Sign out',
     account: 'Account', status: 'Subscription', link: 'Connection',
     active: 'Active', inactive: 'Not subscribed', connected: 'Connected', connecting: 'Connecting…', offline: 'Offline',
-    monthly: 'Monthly', yearly: 'Yearly', until: 'until',
+    monthly: 'Monthly', yearly: 'Yearly', lifetime: 'Lifetime', until: 'until',
     notSubscribed: 'This device is linked, but there’s no active subscription on this email yet.',
     errors: {
       invalid_email: 'That email doesn’t look right.', rate_limited: 'Wait a moment, then try again.',
