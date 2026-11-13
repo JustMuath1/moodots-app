@@ -1,0 +1,34 @@
+# Personal data and runtime files — never commit
+xbloom_config.json
+schedules.json
+recipe_tags.json
+tank.json
+nuqta.db
+nuqta.db-*
+push_keys.json
+push_subs.json
+alexa_selected.json
+*.log
+.nuqta-server.lock
+
+# Build output (rebuilt from frontend/)
+dashboard.html
+frontend/dist/
+frontend/node_modules/
+
+# Licensed fonts are not redistributed — place your own in fonts/
+fonts/
+*.otf
+*.ttf
+*.woff2
+
+# OS / editor
+.DS_Store
+__pycache__/
+*.pyc
+
+# Pro add-ons (not part of the open base)
+analytics.py
+analytics_db.py
+webpush.py
+tests/

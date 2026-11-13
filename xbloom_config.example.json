@@ -1,0 +1,6 @@
+{
+  "_comment": "Optional. Copy to xbloom_config.json to pin a machine and sync recipes from your xBloom account. Everything works without it — the app also discovers the machine over Bluetooth and ships with a few starter recipes.",
+  "machine_name": "",
+  "cloud_email": "",
+  "cloud_password": ""
+}
