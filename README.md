@@ -11,6 +11,7 @@ Arabic first · tablet, iPad, phone and desktop · themes · Saudi standby scene
 <p align="center">
   <a href="#install">Install</a> ·
   <a href="#install-with-claude-code-no-technical-steps">Install with Claude Code</a> ·
+  <a href="#raspberry-pi--an-alwayson-host-no-mac-needed">Raspberry Pi</a> ·
   <a href="https://hub.nuqtasa.tools/install">دليل التثبيت بالعربية</a> ·
   <a href="#nuqta-cloud-coming-soon">Nuqta Cloud (soon)</a> ·
   <a href="#troubleshooting">Troubleshooting</a>
@@ -86,6 +87,59 @@ and starts Nuqta. Nothing is installed system‑wide.
 
 **Starting it next time:** `start-nuqta.command` (macOS), `start-nuqta.bat` (Windows), or
 `./start-nuqta.sh` (Linux). Keep that window open while you use Nuqta.
+
+## Raspberry Pi — an always‑on host, no Mac needed
+A **Raspberry Pi** placed near the xBloom can run Nuqta 24/7 on very little power. Your tablets and
+phones (Android included) open the dashboard from it. An Android tablet can't be the host itself:
+Android doesn't let ordinary apps use the Bluetooth access Nuqta needs — but it works fully as a
+screen.
+
+### What you need
+- **Raspberry Pi 4 or 5** (2 GB RAM or more) — they have Bluetooth and Wi‑Fi built in. A Pi 3B+ or
+  Zero 2 W also has Bluetooth but builds slowly.
+- Its power supply and a **microSD card** (16 GB+).
+- A computer to prepare the card.
+
+### 1. Prepare the card
+1. Install **[Raspberry Pi Imager](https://www.raspberrypi.com/software/)** on your computer.
+2. Choose your Pi model, **Raspberry Pi OS (64‑bit)** (Lite is enough), and the microSD card.
+3. When it asks to customise settings, set:
+   - hostname **`nuqta`**
+   - a username and password
+   - your **Wi‑Fi** name and password
+   - under Services, **enable SSH**
+4. Write the card, put it in the Pi, power it on near the xBloom and wait about 2 minutes.
+
+### 2. Connect to it
+From your computer's Terminal (Windows: PowerShell), using the username you chose:
+```bash
+ssh <username>@nuqta.local
+```
+
+### 3. Install Nuqta on the Pi
+```bash
+sudo apt update && sudo apt install -y git python3-venv nodejs npm bluez lsof
+```
+```bash
+git clone https://github.com/JustMuath1/nuqta-app.git && cd nuqta-app
+```
+```bash
+NUQTA_NO_START=1 bash install.sh
+```
+Building the dashboard can take a couple of minutes on a Pi.
+
+### 4. Start it automatically at every boot
+```bash
+bash install-service.sh
+```
+It prints the address to open — usually **http://nuqta.local:8420**. On Android, open it in
+Chrome → menu → **Add to Home screen**. (If `nuqta.local` doesn't open on Android, use the IP
+address it printed.)
+
+**Day to day:** restart with `sudo systemctl restart nuqta`, watch the log with
+`journalctl -u nuqta -f`. **Update:** `cd nuqta-app && git pull && NUQTA_NO_START=1 bash
+install.sh && sudo systemctl restart nuqta`. **Turn off auto‑start:** `bash install-service.sh
+--remove`.
 
 ## Install with Claude Code (no technical steps)
 [Claude Code](https://code.claude.com/docs/en/overview) can do the whole install for you: it

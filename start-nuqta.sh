@@ -13,6 +13,13 @@
 #   systemd-inhibit --what=idle:sleep ./start-nuqta.sh
 cd "$(dirname "$0")"
 
+# Installed as a boot service (install-service.sh)? Then systemd owns it — don't start a second copy.
+if command -v systemctl >/dev/null && systemctl is-enabled --quiet nuqta 2>/dev/null; then
+  echo "Nuqta runs as a service on this machine (it starts at boot)."
+  echo "Restart it with:  sudo systemctl restart nuqta   ·   logs: journalctl -u nuqta -f"
+  exit 0
+fi
+
 old=$(lsof -tiTCP:8420 -sTCP:LISTEN 2>/dev/null)
 if [ -n "$old" ]; then
   echo "Stopping the Nuqta server already running (PID $old)…"
