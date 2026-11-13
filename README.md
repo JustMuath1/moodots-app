@@ -67,9 +67,33 @@ are built in and the machine is still fully controllable.
 The UI prefers the **Thmanyah** font but ships without it (it's licensed), falling back to IBM Plex
 Sans Arabic. To use Thmanyah, drop its `.woff2`/`.otf` files in a `fonts/` folder.
 
-## Nuqta Pro
-This is the free, open base. **Nuqta Pro** adds brew analytics, phone push notifications, multi‑device
-cloud sync, secure remote access and automatic updates, on a subscription. (Details and sign‑up: TBA.)
+## Updating
+To update to the latest version, double‑click **`nuqta-update.command`** from Terminal. It pulls the
+newest code, rebuilds the dashboard, refreshes packages and restarts the server — one click. Your
+recipes, config, database and keys are never touched. With Claude Code, just say **"update Nuqta"**.
+
+## Free vs Nuqta Pro
+The base you're looking at is **free and open** — it runs entirely on your Mac, forever, with no
+account and no subscription. **Nuqta Pro** is an optional subscription that adds the features that need
+a server to work (and keeps them updated automatically).
+
+| | **Base (free)** | **Nuqta Pro** |
+|---|:---:|:---:|
+| One‑tap brew, pause, resume, stop | ✓ | ✓ |
+| Grind / water / scale modes | ✓ | ✓ |
+| Water‑tank tracking | ✓ | ✓ |
+| Recipes & schedules | ✓ | ✓ |
+| Themes, standby scenes, Arabic/English | ✓ | ✓ |
+| Alexa control | ✓ | ✓ |
+| On your home Wi‑Fi | ✓ | ✓ |
+| **Brew analytics** — history, 11 insight cards, ratings | — | ✓ |
+| **Phone push notifications** — "cup is ready", with sound | — | ✓ |
+| **Secure remote access** — use it from anywhere, email sign‑in | — | ✓ |
+| **Multi‑device cloud sync & backup** | — | ✓ |
+| **Automatic updates** (incl. security fixes) | manual (`nuqta-update`) | automatic |
+
+Pro features appear in the app only when an active subscription is detected — otherwise they're hidden
+and the base works exactly as shown. Details and sign‑up: **TBA**.
 
 ## License
 MIT — see [LICENSE](LICENSE). Not affiliated with xBloom.
