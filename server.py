@@ -33,6 +33,8 @@ import bleak
 from cryptography.hazmat.primitives.asymmetric import padding as rsa_padding
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
 
+import hub_client
+
 log = logging.getLogger("xbloom")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(name)s  %(message)s")
 
@@ -1196,6 +1198,11 @@ def notify_finished(name: str, weight: float, demo: bool = False):
         body = f"{name} · {round(weight)} g" if name else f"{round(weight)} g"
         import threading
         threading.Thread(target=lambda: log.info("Web Push sent to %d device(s)", pusher.send(title, body, tag="brew", url="/")), daemon=True).start()
+    if _hub_agent_ws is not None and not _hub_agent_ws.closed and not demo and main_loop:
+        title = "قهوتك جاهزة · Coffee ready"
+        body = f"{name} · {round(weight)} g" if name else f"{round(weight)} g"
+        push_envelope = json.dumps({"__hub_push__": True, "title": title, "body": body})
+        asyncio.run_coroutine_threadsafe(_hub_agent_ws.send_str(push_envelope), main_loop)
 
 
 async def reset_for_brew(recipe: dict):
@@ -1332,6 +1339,7 @@ async def demo_control(action: str):
         demo_state.update(weight_g=0.0)
     await broadcast({"type": "state", "data": state.to_dict()})
 ws_clients: set[web.WebSocketResponse] = set()
+_hub_agent_ws = None  # the outbound connection to the Nuqta Cloud hub, when remote access is on
 ble_client: bleak.BleakClient | None = None
 ble_lock = asyncio.Lock()
 assembler = Assembler()
@@ -1759,13 +1767,12 @@ def _all_recipes():
     return STARTER_RECIPES + cloud_recipes
 
 
-async def handle_ws(request):
-    global module_mode
-    ws = web.WebSocketResponse()
-    await ws.prepare(request)
-    ws_clients.add(ws)
-    log.info(f"WebSocket client connected ({len(ws_clients)} total)")
-
+async def _send_ws_snapshot(ws):
+    """The initial burst a dashboard needs on open: hello, state, recipes,
+    schedules, tags, cloud status. A local tab gets this once when IT
+    connects. The hub's single outbound agent connection stays open for
+    hours, so it needs this resent on demand — see __hub_client_connected__
+    below — otherwise a phone that attaches later sees nothing."""
     await ws.send_json({"type": "hello", "build": dashboard_build_id()})
     if weather_now:
         await ws.send_json({"type": "weather", "data": weather_now})
@@ -1778,6 +1785,19 @@ async def handle_ws(request):
         "email": cloud_email,
     }})
 
+
+async def _run_ws_session(ws, peer: str = ""):
+    """Runs the dashboard protocol over an already-open ws. aiohttp's
+    server-side WebSocketResponse (a local tab) and client-side
+    ClientWebSocketResponse (the outbound connection to the Nuqta Cloud
+    hub, when remote access is on) both support send_json/send_str and
+    async-for iteration the same way, so this one function drives either
+    — the hub side is handled exactly like any other local client.
+    `peer` is a label for logging only ("" for the hub, since there's no
+    per-request remote address there)."""
+    global module_mode
+    await _send_ws_snapshot(ws)
+
     try:
         async for msg in ws:
             if msg.type != web.WSMsgType.TEXT:
@@ -1787,12 +1807,16 @@ async def handle_ws(request):
             except json.JSONDecodeError:
                 continue
 
+            if cmd.get("__hub_client_connected__"):
+                await _send_ws_snapshot(ws)
+                continue
+
             action = cmd.get("action")
             result = None
 
             if action == "client_info":
                 log.info("Screen %sx%s dpr=%s %s | %s | %s", cmd.get("w"), cmd.get("h"), cmd.get("dpr"),
-                         request.remote, " ".join(cmd.get("btns") or []), (cmd.get("ua") or "")[:90])
+                         peer, " ".join(cmd.get("btns") or []), (cmd.get("ua") or "")[:90])
                 continue
             if action == "connect":
                 if cmd.get("machine"):
@@ -1941,6 +1965,15 @@ async def handle_ws(request):
 
     except Exception as e:
         log.info(f"WebSocket closed: {e}")
+
+
+async def handle_ws(request):
+    ws = web.WebSocketResponse()
+    await ws.prepare(request)
+    ws_clients.add(ws)
+    log.info(f"WebSocket client connected ({len(ws_clients)} total)")
+    try:
+        await _run_ws_session(ws, peer=request.remote)
     finally:
         ws_clients.discard(ws)
         log.info(f"WebSocket client disconnected ({len(ws_clients)} total)")
@@ -2046,6 +2079,45 @@ async def handle_schedules_delete(request):
 # ---------------------------------------------------------------------------
 # App startup
 # ---------------------------------------------------------------------------
+async def cloud_agent_loop():
+    """When this app is signed in to a Nuqta Cloud hub and the account is
+    active, keeps an outbound connection open to it so a phone away from
+    home can reach this dashboard, and so brew-done pushes can go through
+    the hub. Does nothing (just sleeps) when not configured, or when the
+    account isn't active — cheap to always have running."""
+    global _hub_agent_ws
+    backoff = 2
+    while True:
+        try:
+            if not hub_client.hub.configured:
+                await asyncio.sleep(30)
+                continue
+            status = await hub_client.hub.account_status()
+            if not status.get("active"):
+                await asyncio.sleep(60)
+                continue
+
+            async with aiohttp.ClientSession() as http:
+                async with http.ws_connect(hub_client.hub.agent_ws_url(), heartbeat=30) as ws:
+                    _hub_agent_ws = ws
+                    ws_clients.add(ws)
+                    log.info("Nuqta Cloud: connected to hub — remote access is on")
+                    backoff = 2
+                    try:
+                        await _run_ws_session(ws)
+                    finally:
+                        ws_clients.discard(ws)
+                        _hub_agent_ws = None
+                        log.info("Nuqta Cloud: disconnected from hub")
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            log.warning("Nuqta Cloud: hub connection failed (%s) — retrying in %ss", e, backoff)
+
+        await asyncio.sleep(backoff)
+        backoff = min(backoff * 2, 60)
+
+
 async def on_startup(app):
     global main_loop, cloud_session
     main_loop = asyncio.get_running_loop()
@@ -2060,6 +2132,7 @@ async def on_startup(app):
     app["sched_task"] = asyncio.create_task(schedule_checker())
     app["build_watch"] = asyncio.create_task(watch_dashboard_build())
     app["weather"] = asyncio.create_task(watch_weather())
+    app["hub_agent"] = asyncio.create_task(cloud_agent_loop())
     # reconnect to the machine picked last time (after a restart nobody has to tap "connect")
     if machine_chosen and not os.environ.get("NUQTA_NO_BLE"):
         log.info("Reconnecting to %s", preferred_machine)
@@ -2367,6 +2440,46 @@ async def handle_capabilities(request):
     """What this build offers, so the dashboard can show only the features that are present."""
     return web.json_response({"analytics": HAS_ANALYTICS, "push": HAS_PUSH,
                               "cloud": True, "alexa": True})
+
+
+# ---- Nuqta Cloud (optional remote access / push via a hub) -----------------
+
+async def handle_hub_status(request):
+    status = await hub_client.hub.account_status()
+    status["connected"] = _hub_agent_ws is not None and not _hub_agent_ws.closed
+    return web.json_response(status)
+
+
+async def handle_hub_request_code(request):
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"ok": False, "error": "bad_json"}, status=400)
+    hub_url = str(body.get("hub_url", "")).strip()
+    email = str(body.get("email", "")).strip()
+    if not hub_url or not email:
+        return web.json_response({"ok": False, "error": "missing_fields"}, status=400)
+    result = await hub_client.hub.request_code(hub_url, email)
+    return web.json_response(result)
+
+
+async def handle_hub_verify(request):
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"ok": False, "error": "bad_json"}, status=400)
+    hub_url = str(body.get("hub_url", "")).strip()
+    email = str(body.get("email", "")).strip()
+    code = str(body.get("code", "")).strip()
+    if not hub_url or not email or not code:
+        return web.json_response({"ok": False, "error": "missing_fields"}, status=400)
+    result = await hub_client.hub.verify_code(hub_url, email, code)
+    return web.json_response(result)
+
+
+async def handle_hub_signout(request):
+    hub_client.hub.sign_out()
+    return web.json_response({"ok": True})
 
 
 async def handle_push_key(request):
@@ -2701,6 +2814,10 @@ def main():
     app.router.add_get("/api/brews/curves", handle_brew_curves)
     app.router.add_post("/api/trace", handle_trace)
     app.router.add_get("/api/capabilities", handle_capabilities)
+    app.router.add_get("/api/hub/status", handle_hub_status)
+    app.router.add_post("/api/hub/request-code", handle_hub_request_code)
+    app.router.add_post("/api/hub/verify", handle_hub_verify)
+    app.router.add_post("/api/hub/signout", handle_hub_signout)
     app.router.add_get("/sw.js", handle_service_worker)
     app.router.add_get("/api/push/key", handle_push_key)
     app.router.add_post("/api/push/subscribe", handle_push_subscribe)
