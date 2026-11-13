@@ -4,7 +4,7 @@ import Clock from './Clock';
 import Logo from './Logo';
 import { THEMES } from '../utils/themes';
 
-export default function Header({ lang, ble, soundOn, onToggleSound, fullscreen, onOpenConnection, onOpenAccount, onRestart, onToggleLang, theme, onOpenThemes, canCustomise, editing, onCustomise, page, onAnalytics, onNotify, pushOn, showAnalytics }) {
+export default function Header({ lang, ble, soundOn, onToggleSound, fullscreen, onOpenConnection, onOpenAccount, onRestart, onToggleLang, theme, onOpenThemes, canCustomise, editing, onCustomise, page, onAnalytics, onNotify, pushOn, showAnalytics, onOpenSettings }) {
   const [restarting, setRestarting] = useState(false);
 
   const isOn = ble === 'connected';
@@ -50,7 +50,7 @@ export default function Header({ lang, ble, soundOn, onToggleSound, fullscreen, 
         )}
         {fullscreen?.supported && (
           <button
-            className="icon-btn"
+            className="icon-btn hide-sm"
             onClick={fullscreen.toggle}
             title={t(fullscreen.active ? 'exitFullscreen' : 'enterFullscreen', lang)}
             aria-pressed={fullscreen.active}
@@ -68,20 +68,25 @@ export default function Header({ lang, ble, soundOn, onToggleSound, fullscreen, 
           </svg>
           {pushOn && <span className="hdr-dot" />}
         </button>
-        <button className="icon-btn" onClick={onToggleLang} title="EN / AR">
+        <button className="icon-btn hide-sm" onClick={onToggleLang} title="EN / AR">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>
           </svg>
         </button>
-        <button className={`icon-btn${restarting ? ' spinning' : ''}`} onClick={handleRestart} title={t('restart', lang)}>
+        <button className={`icon-btn hide-sm${restarting ? ' spinning' : ''}`} onClick={handleRestart} title={t('restart', lang)}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/>
             <path d="M21 3v5h-5"/><path d="M3 21v-5h5"/>
           </svg>
         </button>
-        <button className="icon-btn" onClick={onOpenAccount} title={t('cloudAccount', lang)}>
+        <button className="icon-btn hide-sm" onClick={onOpenAccount} title={t('cloudAccount', lang)}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>
+          </svg>
+        </button>
+        <button className="icon-btn only-sm" onClick={onOpenSettings} title={t('settings', lang)} aria-haspopup="dialog">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
           </svg>
         </button>
       </div>

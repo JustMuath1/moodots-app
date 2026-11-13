@@ -10,6 +10,7 @@ import TankStrip, { tankInfo } from './components/TankStrip';
 import BeanSheet from './components/BeanSheet';
 import AnalyticsPage from './components/AnalyticsPage';
 import NotifySheet from './components/NotifySheet';
+import SettingsSheet from './components/SettingsSheet';
 import { pushState } from './utils/push';
 import RatingSheet from './components/RatingSheet';
 import Skeleton, { SkeletonRows } from './components/Skeleton';
@@ -116,6 +117,7 @@ export default function App() {
   const pickTlView = useCallback((v) => { setTlView(v); try { localStorage.setItem('nuqta_tl_view', v); } catch {} }, []);
   const [tankBack, setTankBack] = useState(null);
   const [showNotify, setShowNotify] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [pushOn, setPushOn] = useState(false);
   const [caps, setCaps] = useState({ analytics: true, push: true, cloud: true, alexa: true }); // { prev, cap } after the tank is put back
   const [rateBrew, setRateBrew] = useState(null); // { id, recipe } after a finished brew
@@ -1115,6 +1117,7 @@ export default function App() {
         canCustomise={wide && page === 'home'}
         page={page}
         onNotify={() => setShowNotify(true)}
+        onOpenSettings={() => setShowSettings(true)}
         pushOn={pushOn}
         onAnalytics={() => { setEditing(false); setShowTray(false); goPage(page === 'analytics' ? 'home' : 'analytics'); if (page !== 'analytics') loadAnalytics(); }}
         editing={editing}
@@ -1175,6 +1178,7 @@ export default function App() {
       )}
 
       {rateBrew && <RatingSheet lang={lang} brew={rateBrew} onClose={(saved) => { setRateBrew(null); if (saved) loadAnalytics(); }} />}
+      {showSettings && <SettingsSheet lang={lang} fullscreen={fullscreen} onToggleLang={toggleLang} onRestart={restartServer} onOpenAccount={() => setShowAccount(true)} onClose={() => setShowSettings(false)} />}
       {showNotify && <NotifySheet lang={lang} soundOn={soundOn} onToggleSound={toggleSound} pushAvailable={caps.push} onClose={() => { setShowNotify(false); refreshPush(); }} />}
       {showBeans && <BeanSheet lang={lang} onClose={() => setShowBeans(false)} onSaved={loadAnalytics} />}
       {showAccount && (

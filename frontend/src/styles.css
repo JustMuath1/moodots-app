@@ -1893,3 +1893,13 @@ html, body, .app-shell, .hero-card, .side-panel, .strip-card, .pour-timeline, .c
 @media (min-width: 768px) and (orientation: portrait) {
   .app-shell .home-grid { align-content: start; grid-auto-rows: clamp(104px, 12vh, 150px); }
 }
+
+/* Small screens: fold language, fullscreen, restart and account into the Settings gear.
+   Wide screens: show them inline and hide the gear. */
+.only-sm { display: none; }
+@media (max-width: 767px) {
+  .app-header .hide-sm { display: none; }
+  .app-header .only-sm { display: inline-flex; }
+}
+.lang-seg { flex: none; width: auto; }
+.lang-seg > button { padding: 0 14px; }
