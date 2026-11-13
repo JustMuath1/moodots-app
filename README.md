@@ -10,6 +10,7 @@ Arabic first · tablet, iPad, phone and desktop · themes · Saudi standby scene
 
 <p align="center">
   <a href="#install">Install</a> ·
+  <a href="#install-with-claude-code-no-technical-steps">Install with Claude Code</a> ·
   <a href="https://hub.nuqtasa.tools/install">دليل التثبيت بالعربية</a> ·
   <a href="#nuqta-cloud-optional">Nuqta Cloud</a> ·
   <a href="#troubleshooting">Troubleshooting</a>
@@ -86,13 +87,54 @@ and starts Nuqta. Nothing is installed system‑wide.
 **Starting it next time:** `start-nuqta.command` (macOS), `start-nuqta.bat` (Windows), or
 `./start-nuqta.sh` (Linux). Keep that window open while you use Nuqta.
 
-### Install with Claude Code instead
-Open this folder in [Claude Code](https://claude.com/claude-code) and say:
-> **Set up Nuqta for my xBloom and run it.**
+## Install with Claude Code (no technical steps)
+[Claude Code](https://code.claude.com/docs/en/overview) can do the whole install for you: it
+downloads Nuqta, checks what's missing, runs the installer and starts it, explaining each step.
+You need a **paid Claude plan (Pro or higher)** — the free plan doesn't include Claude Code.
 
-It reads [`CLAUDE.md`](CLAUDE.md) and walks you through each step.
+### Option A — Claude desktop app (no terminal)
+1. Download the **Claude** app from [claude.com/download](https://claude.com/download) and sign in.
+2. Open the **Code** tab, then choose a folder for Nuqta to live in (for example *Documents*):
+   click the folder control under the prompt box → **Open folder…**.
+3. Paste this and press Enter:
+   > **Download Nuqta from https://github.com/JustMuath1/nuqta-app and set it up for my xBloom.**
 
-### Optional extras
+   بالعربي:
+   > **حمّل نقطة من https://github.com/JustMuath1/nuqta-app وجهّزها لآلة xBloom عندي.**
+
+### Option B — Claude Code in the terminal
+1. Install Claude Code:
+
+   | Your computer | Run this |
+   |---|---|
+   | **macOS / Linux** | `curl -fsSL https://claude.ai/install.sh \| bash` |
+   | **Windows** (PowerShell) | `irm https://claude.ai/install.ps1 \| iex` |
+
+   Then open a **new** terminal window. (Homebrew: `brew install --cask claude-code` ·
+   WinGet: `winget install Anthropic.ClaudeCode`.)
+2. Go to a folder for Nuqta and start Claude:
+   ```bash
+   cd ~/Documents
+   ```
+   ```bash
+   claude
+   ```
+   The first time, it opens your browser to sign in.
+3. Paste the same message as in Option A.
+
+### What happens next
+- Claude checks for **Python** and **Node.js**. If one is missing it tells you exactly what to
+  install, then carries on.
+- It asks your permission before running commands — read each one and approve it.
+- It runs the installer and opens Nuqta in its own window. **On a Mac, click Allow when macOS asks
+  for Bluetooth.**
+- It gives you the address to open on your phone.
+
+**Later, just ask Claude** in the same folder: *"update Nuqta"*, *"my phone can't open the
+dashboard"*, *"add my xBloom recipes"*, or *"start Nuqta"*. It follows the instructions in
+[`CLAUDE.md`](CLAUDE.md).
+
+## Optional extras
 - **Your own xBloom recipes:** copy `xbloom_config.example.json` to `xbloom_config.json` and add your
   xBloom email and password. The file stays on your computer (it's git‑ignored). Without it, a few
   starter recipes are built in.

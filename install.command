@@ -26,6 +26,7 @@ ok "Dashboard built."
 print ""
 ok "Nuqta is installed."
 print "Next time, start it by double-clicking start-nuqta.command."
+[[ -n "$NUQTA_NO_START" ]] && exit 0   # set by Claude Code / scripts: install only
 print -n "Start Nuqta now? [Y/n] "
 read reply
 [[ "$reply" == [nN]* ]] && exit 0

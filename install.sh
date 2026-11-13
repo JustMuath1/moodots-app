@@ -25,6 +25,7 @@ ok "Dashboard built."
 
 echo
 ok "Nuqta is installed. Start it any time with: ./start-nuqta.sh"
+[ -n "$NUQTA_NO_START" ] && exit 0   # set by Claude Code / scripts: install only
 read -r -p "Start Nuqta now? [Y/n] " reply
 case "$reply" in [nN]*) exit 0 ;; esac
 exec ./start-nuqta.sh

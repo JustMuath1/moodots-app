@@ -24,6 +24,8 @@ popd
 
 echo.
 echo Nuqta is installed. Next time, start it by double-clicking start-nuqta.bat
+REM NUQTA_NO_START is set by Claude Code / scripts: install only, don't start.
+if defined NUQTA_NO_START exit /b 0
 call start-nuqta.bat
 exit /b 0
 
