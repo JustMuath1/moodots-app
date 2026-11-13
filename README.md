@@ -35,7 +35,10 @@ machine.
 
 ## Install
 
-You need a **Mac** (for the Bluetooth link), **Python 3.10+** and **Node.js 18+**.
+You need a computer with Bluetooth near the machine — **macOS, Windows, or Linux** — plus
+**Python 3.10+** and **Node.js 18+**. macOS is the best-tested platform; Windows and Linux use
+the same Bluetooth library (`bleak`) and are supported, but newer and less battle-tested —
+if something doesn't work, please open an issue.
 
 ### The easy way — with Claude Code
 Open this folder in [Claude Code](https://claude.com/claude-code) and say:
@@ -51,12 +54,20 @@ pip3 install bleak aiohttp certifi fauxmo
 ```bash
 cd frontend && npm install && npm run build && cd ..
 ```
-```bash
-open -a Terminal start-nuqta.command
-```
-The first run asks macOS for Bluetooth permission — click **Allow**. The Terminal window prints the
-addresses to open. On the Mac open **http://localhost:8420**; on a phone or tablet on the same Wi‑Fi,
-open the **http://<your‑Mac‑IP>:8420** address it prints. Turn the machine on; it connects by itself.
+
+Then start the server — pick your OS:
+
+| OS | Run |
+|---|---|
+| macOS | `open -a Terminal start-nuqta.command` |
+| Windows | double-click `start-nuqta.bat` |
+| Linux | `./start-nuqta.sh` |
+
+On macOS, the first run asks for Bluetooth permission — click **Allow**. On Windows, make sure
+Bluetooth is on in Settings (needs Windows 10 1809+). On Linux, Bluetooth goes through BlueZ —
+`sudo systemctl enable --now bluetooth` if it's off. Each script prints the addresses to open:
+on this computer, **http://localhost:8420**; on a phone or tablet on the same Wi‑Fi, the
+**http://<this‑computer's‑IP>:8420** address it prints. Turn the machine on; it connects by itself.
 
 ## Sync your own recipes (optional)
 Copy `xbloom_config.example.json` to `xbloom_config.json` and add your xBloom email and password to

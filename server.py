@@ -1182,14 +1182,15 @@ def notify_finished(name: str, weight: float, demo: bool = False):
     msg = {"type": "brew_finished", "data": {"recipe": name, "weight": round(weight, 1), "demo": demo}}
     if main_loop:
         asyncio.run_coroutine_threadsafe(broadcast(msg), main_loop)
-    try:
-        import subprocess
-        text = f"{name} is ready" if name else "Your coffee is ready"
-        text = text.replace('"', "'").replace("\\", "")
-        subprocess.Popen(["osascript", "-e", f'display notification "{text}" with title "Nuqta" sound name "Glass"'],
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except Exception as e:
-        log.warning("Mac notification failed: %s", e)
+    if sys.platform == "darwin":
+        try:
+            import subprocess
+            text = f"{name} is ready" if name else "Your coffee is ready"
+            text = text.replace('"', "'").replace("\\", "")
+            subprocess.Popen(["osascript", "-e", f'display notification "{text}" with title "Nuqta" sound name "Glass"'],
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as e:
+            log.warning("Mac notification failed: %s", e)
     if pusher.enabled and pusher.count() and not demo:
         title = "قهوتك جاهزة · Coffee ready"
         body = f"{name} · {round(weight)} g" if name else f"{round(weight)} g"
