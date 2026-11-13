@@ -12,7 +12,7 @@ Arabic first · tablet, iPad, phone and desktop · themes · Saudi standby scene
   <a href="#install">Install</a> ·
   <a href="#install-with-claude-code-no-technical-steps">Install with Claude Code</a> ·
   <a href="https://hub.nuqtasa.tools/install">دليل التثبيت بالعربية</a> ·
-  <a href="#nuqta-cloud-optional">Nuqta Cloud</a> ·
+  <a href="#nuqta-cloud-coming-soon">Nuqta Cloud (soon)</a> ·
   <a href="#troubleshooting">Troubleshooting</a>
 </p>
 
@@ -141,16 +141,17 @@ dashboard"*, *"add my xBloom recipes"*, or *"start Nuqta"*. It follows the instr
 - **Fonts:** the UI prefers the licensed **Thmanyah** font and falls back to IBM Plex Sans Arabic.
   To use Thmanyah, put its `.woff2`/`.otf` files in a `fonts/` folder.
 
-## Nuqta Cloud (optional)
-The app is complete and free on your home Wi‑Fi. **Nuqta Cloud** adds what needs a server:
+## Nuqta Cloud (coming soon)
+The app is complete and free on your home Wi‑Fi. **Nuqta Cloud** — in development — will add what
+needs a server:
 - Open your dashboard **from your phone away from home** — no router setup.
 - **"Your coffee is ready"** alerts on your phone, with sound.
 - **Sync and backup** of your settings and brew history.
 - **Automatic updates**, security fixes included.
 
-**49 SAR, paid once, for life** — no monthly subscription.
-**Join at [hub.nuqtasa.tools](https://hub.nuqtasa.tools)**, then in the app go to
-**Settings → Nuqta Cloud**, enter the same email and the 6‑digit code you receive.
+**Launch price: 49 SAR, paid once, for life** — no monthly subscription. Nothing to pay now:
+**save your spot at [hub.nuqtasa.tools](https://hub.nuqtasa.tools)** and you'll get an email when it
+launches.
 
 ## Updating
 Double‑click **`nuqta-update.command`** (macOS). It downloads the latest version, updates packages,

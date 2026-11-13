@@ -8,7 +8,7 @@ const HUB_URL = 'https://hub.nuqtasa.tools';
 
 const TX = {
   ar: {
-    title: 'Nuqta Cloud', intro: 'اربط هذا الجهاز بحسابك لتصل إلى نقطة من أي مكان وتصلك تنبيهات القهوة على جوالك.',
+    title: 'Nuqta Cloud', intro: 'Nuqta Cloud قيد التطوير: الوصول لنقطة من أي مكان وتنبيهات القهوة على جوالك. احجز مكانك في hub.nuqtasa.tools — وإذا لديك حساب مفعّل فسجّل الدخول هنا.',
     email: 'البريد الإلكتروني', send: 'أرسل الرمز', sending: 'جارٍ الإرسال…',
     codeSent: 'أرسلنا رمزاً من ٦ أرقام إلى', code: 'الرمز', verify: 'تأكيد', verifying: 'جارٍ التأكيد…',
     back: 'تغيير البريد', close: 'إغلاق', signout: 'تسجيل الخروج',
@@ -23,7 +23,7 @@ const TX = {
     },
   },
   en: {
-    title: 'Nuqta Cloud', intro: 'Link this device to your account to reach Nuqta from anywhere and get coffee alerts on your phone.',
+    title: 'Nuqta Cloud', intro: 'Nuqta Cloud is in development: reach Nuqta from anywhere and get coffee alerts on your phone. Save your spot at hub.nuqtasa.tools — if you already have an active account, sign in here.',
     email: 'Email', send: 'Send code', sending: 'Sending…',
     codeSent: 'We sent a 6-digit code to', code: 'Code', verify: 'Verify', verifying: 'Verifying…',
     back: 'Change email', close: 'Close', signout: 'Sign out',

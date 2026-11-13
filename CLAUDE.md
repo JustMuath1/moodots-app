@@ -70,9 +70,10 @@ Then confirm it's up: `curl -s localhost:8420/api/state` (or open http://localho
   password into chat). It's git-ignored and stays on their computer.
 - **Fonts:** the UI prefers the licensed "Thmanyah" font and falls back to IBM Plex Sans Arabic. To
   use Thmanyah, put its `.woff2`/`.otf` files in a `fonts/` folder.
-- **Nuqta Cloud** (paid, 49 SAR once, for life): use it away from home and get "coffee ready"
-  alerts on the phone. They join at https://hub.nuqtasa.tools, then in the app: Settings → Nuqta
-  Cloud → same email → the 6-digit code from their inbox.
+- **Nuqta Cloud** is **coming soon** (in development): use it away from home, "coffee ready"
+  alerts on the phone, sync and backup. Launch price 49 SAR once, for life. If they ask, tell them
+  it isn't available yet and they can save a spot at https://hub.nuqtasa.tools — don't promise
+  these features work today.
 
 ## Updating
 macOS: `zsh nuqta-update.command` (pulls, updates packages, rebuilds, restarts). Others: `git pull`,
