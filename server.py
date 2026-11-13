@@ -2778,11 +2778,16 @@ def ensure_single_instance():
     """Exit if another Nuqta server is already running on this Mac.
     The lock is released automatically when the process ends (or execs on /api/restart)."""
     global _instance_lock
-    import fcntl
     lock_path = Path(__file__).resolve().parent / ".nuqta-server.lock"
     _instance_lock = open(lock_path, "a+")
     try:
-        fcntl.flock(_instance_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        if sys.platform == "win32":
+            import msvcrt   # Windows has no fcntl; lock the first byte instead
+            _instance_lock.seek(0)
+            msvcrt.locking(_instance_lock.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(_instance_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
         _instance_lock.seek(0)
         other = _instance_lock.read().strip() or "?"

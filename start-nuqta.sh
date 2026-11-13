@@ -25,5 +25,7 @@ if [ -n "$old" ]; then
   sleep 1
 fi
 
+# Use the private environment from install.sh when it exists.
+PY=python3; [ -x .venv/bin/python ] && PY=.venv/bin/python
 echo "Nuqta server starting (Ctrl+C to stop)"
-exec python3 server.py
+exec "$PY" server.py

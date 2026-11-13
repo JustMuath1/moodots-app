@@ -37,7 +37,11 @@ fi
 
 # 3. Keep Python packages current.
 say "Checking Python packages…"
-pip3 install --quiet --upgrade bleak aiohttp certifi fauxmo 2>/dev/null && ok "Packages ready."
+if [[ -x .venv/bin/python ]]; then
+  .venv/bin/python -m pip install -q --upgrade -r requirements.txt && ok "Packages ready."
+else
+  pip3 install --quiet --upgrade -r requirements.txt 2>/dev/null && ok "Packages ready."
+fi
 
 # 4. Rebuild the dashboard.
 say "Building the dashboard…"

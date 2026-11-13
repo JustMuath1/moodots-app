@@ -19,5 +19,7 @@ if [[ -n "$old" ]]; then
   sleep 1
 fi
 
+# Use the private environment from install.command when it exists.
+PY=python3; [[ -x .venv/bin/python ]] && PY=.venv/bin/python
 echo "Nuqta server — keeping this Mac awake while it runs (Ctrl+C to stop)"
-exec caffeinate -ims python3 server.py
+exec caffeinate -ims $PY server.py

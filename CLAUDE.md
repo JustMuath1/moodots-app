@@ -16,22 +16,27 @@ Windows, or Linux — since step 4 differs.
 - An **xBloom machine** powered on and nearby.
 
 ## Steps
-1. **Python packages** (in the project folder):
-   ```
-   pip3 install bleak aiohttp certifi fauxmo
-   ```
-   `fauxmo` is only needed for the optional Alexa control; skip it if they don't want that.
+1. **Run the installer for their OS** from the project folder. It creates a private Python
+   environment in `.venv`, installs `requirements.txt` into it, and builds the dashboard
+   (`dashboard.html`). Nothing is installed system-wide, which also avoids Homebrew Python's
+   "externally managed environment" error.
+   - macOS: `zsh install.command`
+   - Windows: `install.bat`
+   - Linux: `bash install.sh`
 
-2. **Build the dashboard** (produces `dashboard.html`):
-   ```
-   cd frontend && npm install && npm run build && cd ..
-   ```
+   Each installer offers to start Nuqta at the end; answer **n** here so you can start it in the
+   next step the right way for their OS.
 
-3. **Fonts (optional).** The UI prefers the "Thmanyah" font but ships without it (it's licensed).
+   Manual fallback if an installer can't run: `python3 -m venv .venv`, then
+   `.venv/bin/python -m pip install -r requirements.txt`, then
+   `cd frontend && npm install && npm run build && cd ..`. `fauxmo` in `requirements.txt` is only
+   for the optional Alexa control.
+
+2. **Fonts (optional).** The UI prefers the "Thmanyah" font but ships without it (it's licensed).
    It falls back to IBM Plex Sans Arabic automatically. To use Thmanyah, put the `.woff2`/`.otf`
    files in a `fonts/` folder in the project root.
 
-4. **Run the server.** Pick the script for their OS:
+3. **Run the server.** Pick the script for their OS:
    - **macOS** — must run from Terminal.app so macOS grants Bluetooth permission:
      ```
      open -a Terminal start-nuqta.command
@@ -44,7 +49,7 @@ Windows, or Linux — since step 4 differs.
 
    Each script prints the addresses to open.
 
-5. **Open the dashboard.** On this computer: `http://localhost:8420`. On a phone/tablet on the
+4. **Open the dashboard.** On this computer: `http://localhost:8420`. On a phone/tablet on the
    same Wi-Fi: the `http://<this-computer's-IP>:8420` address printed by the script. The machine
    connects over Bluetooth automatically; it appears as "connected" in the header.
 
@@ -61,6 +66,13 @@ are built in and the machine is still fully controllable.
   macOS/Linux: `lsof -tiTCP:8420 | xargs kill`; Windows: `netstat -ano | findstr :8420` then
   `taskkill /PID <pid> /F`.
 - **Rebuild after changing the frontend:** `cd frontend && npm run build`.
+- **`ModuleNotFoundError`:** the packages aren't in the Python being used — run the installer
+  again; the start scripts use `.venv` automatically when it exists.
+
+## Nuqta Cloud (optional, paid)
+If they ask about using it away from home or phone alerts: that's Nuqta Cloud — 49 SAR once,
+for life. They join at https://hub.nuqtasa.tools, then in the app: Settings → Nuqta Cloud →
+same email → 6-digit code from their inbox.
 
 Do not commit `xbloom_config.json`, `nuqta.db`, or anything under the git-ignore list — those hold
 personal data.

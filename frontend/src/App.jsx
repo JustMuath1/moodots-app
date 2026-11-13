@@ -121,7 +121,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showCloud, setShowCloud] = useState(false);
   const [pushOn, setPushOn] = useState(false);
-  const [caps, setCaps] = useState({ analytics: true, push: true, cloud: true, alexa: true }); // { prev, cap } after the tank is put back
+  const [caps, setCaps] = useState({ analytics: false, push: true, cloud: true, alexa: true }); // { prev, cap } after the tank is put back
   const [rateBrew, setRateBrew] = useState(null); // { id, recipe } after a finished brew
   // pages: home (/) and analytics (/analytics); the browser's back button works
   const [page, setPage] = useState(() => (window.location.pathname.startsWith('/analytics') ? 'analytics' : 'home'));
@@ -387,8 +387,9 @@ export default function App() {
 
   // Analytics: computed on the server; refreshed after each logged brew and every 10 minutes
   const loadAnalytics = useCallback(() => {
+    if (!caps.analytics) return;  // builds without the analytics add-on have no /api/analytics
     fetch('/api/analytics').then((r) => r.json()).then((d) => { if (d && d.heatmap) setAnalytics(d); }).catch(() => {});
-  }, []);
+  }, [caps.analytics]);
   loadAnalyticsRef.current = loadAnalytics;
   useEffect(() => {
     loadAnalytics();

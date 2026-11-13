@@ -1,0 +1,8 @@
+# Nuqta — Python packages. Install with:  pip3 install -r requirements.txt
+aiohttp>=3.9        # web server + dashboard WebSocket
+bleak>=0.22         # Bluetooth link to the xBloom (macOS, Windows, Linux)
+certifi             # HTTPS certificates (python.org Python on macOS has none)
+cryptography>=42    # xBloom account sign-in (recipe sync)
+
+# Optional: "Alexa, turn on coffee". Skip it if you don't use Alexa.
+fauxmo

@@ -14,6 +14,9 @@ for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":8420" ^| findstr "LISTENING
     taskkill /PID %%p /F >nul 2>&1
 )
 
+REM Use the private environment from install.bat when it exists.
+set "PY=python"
+if exist ".venv\Scripts\python.exe" set "PY=.venv\Scripts\python.exe"
 echo Nuqta server starting (Ctrl+C to stop)
-python server.py
+%PY% server.py
 pause

@@ -33,3 +33,6 @@ analytics.py
 analytics_db.py
 webpush.py
 tests/
+
+# Private Python environment created by the installers
+.venv/
