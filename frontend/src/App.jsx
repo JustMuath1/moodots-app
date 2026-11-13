@@ -11,6 +11,7 @@ import BeanSheet from './components/BeanSheet';
 import AnalyticsPage from './components/AnalyticsPage';
 import NotifySheet from './components/NotifySheet';
 import SettingsSheet from './components/SettingsSheet';
+import CloudSheet from './components/CloudSheet';
 import { pushState } from './utils/push';
 import RatingSheet from './components/RatingSheet';
 import Skeleton, { SkeletonRows } from './components/Skeleton';
@@ -118,6 +119,7 @@ export default function App() {
   const [tankBack, setTankBack] = useState(null);
   const [showNotify, setShowNotify] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showCloud, setShowCloud] = useState(false);
   const [pushOn, setPushOn] = useState(false);
   const [caps, setCaps] = useState({ analytics: true, push: true, cloud: true, alexa: true }); // { prev, cap } after the tank is put back
   const [rateBrew, setRateBrew] = useState(null); // { id, recipe } after a finished brew
@@ -1178,7 +1180,8 @@ export default function App() {
       )}
 
       {rateBrew && <RatingSheet lang={lang} brew={rateBrew} onClose={(saved) => { setRateBrew(null); if (saved) loadAnalytics(); }} />}
-      {showSettings && <SettingsSheet lang={lang} fullscreen={fullscreen} onToggleLang={toggleLang} onRestart={restartServer} onOpenAccount={() => setShowAccount(true)} onClose={() => setShowSettings(false)} />}
+      {showSettings && <SettingsSheet lang={lang} fullscreen={fullscreen} onToggleLang={toggleLang} onRestart={restartServer} onOpenAccount={() => setShowAccount(true)} onOpenCloud={() => setShowCloud(true)} onClose={() => setShowSettings(false)} />}
+      {showCloud && <CloudSheet lang={lang} onClose={() => setShowCloud(false)} />}
       {showNotify && <NotifySheet lang={lang} soundOn={soundOn} onToggleSound={toggleSound} pushAvailable={caps.push} onClose={() => { setShowNotify(false); refreshPush(); }} />}
       {showBeans && <BeanSheet lang={lang} onClose={() => setShowBeans(false)} onSaved={loadAnalytics} />}
       {showAccount && (

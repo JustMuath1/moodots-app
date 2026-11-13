@@ -14,9 +14,29 @@ import socket
 import time
 from pathlib import Path
 
+import ssl
+
 import aiohttp
 
 log = logging.getLogger("xbloom")
+
+# python.org's Python on macOS ships without system CA certificates, so plain
+# HTTPS to the hub fails verification there. Use certifi's bundle (the main
+# server already depends on it) and fall back to the system store elsewhere.
+try:
+    import certifi
+    _SSL = ssl.create_default_context(cafile=certifi.where())
+except Exception:
+    _SSL = ssl.create_default_context()
+
+
+def session() -> aiohttp.ClientSession:
+    """An HTTP session that can verify the hub's HTTPS certificate on any OS."""
+    # Ask for gzip only: Cloudflare otherwise Brotli-compresses larger responses,
+    # and an installed Brotli package that's older or newer than aiohttp expects
+    # makes every such response undecodable. gzip works everywhere.
+    return aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=_SSL),
+                                 headers={"Accept-Encoding": "gzip, deflate"})
 
 CONFIG_FILE = Path(__file__).resolve().parent / "nuqta_cloud.json"
 _ACCOUNT_CACHE_SECONDS = 60
@@ -67,7 +87,7 @@ class HubClient:
     async def request_code(self, hub_url: str, email: str) -> dict:
         hub_url = hub_url.rstrip("/")
         try:
-            async with aiohttp.ClientSession() as http:
+            async with session() as http:
                 async with http.post(f"{hub_url}/auth/request-code", json={"email": email},
                                       timeout=aiohttp.ClientTimeout(total=10)) as r:
                     data = await r.json()
@@ -81,7 +101,7 @@ class HubClient:
     async def verify_code(self, hub_url: str, email: str, code: str) -> dict:
         hub_url = hub_url.rstrip("/")
         try:
-            async with aiohttp.ClientSession() as http:
+            async with session() as http:
                 async with http.post(f"{hub_url}/auth/verify", json={
                     "email": email, "code": code,
                     "want_agent_token": True, "label": _device_label(),
@@ -119,7 +139,7 @@ class HubClient:
         if not force and self._account_cache and (time.time() - self._account_cache_at) < _ACCOUNT_CACHE_SECONDS:
             return {"configured": True, **self._account_cache}
         try:
-            async with aiohttp.ClientSession() as http:
+            async with session() as http:
                 async with http.get(f"{self.hub_url}/account",
                                      headers={"Authorization": f"Bearer {self.agent_token}"},
                                      timeout=aiohttp.ClientTimeout(total=8)) as r:

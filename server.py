@@ -1340,6 +1340,7 @@ async def demo_control(action: str):
     await broadcast({"type": "state", "data": state.to_dict()})
 ws_clients: set[web.WebSocketResponse] = set()
 _hub_agent_ws = None  # the outbound connection to the Nuqta Cloud hub, when remote access is on
+_hub_wake: asyncio.Event | None = None  # set on sign-in/sign-out so the agent loop reacts at once
 ble_client: bleak.BleakClient | None = None
 ble_lock = asyncio.Lock()
 assembler = Assembler()
@@ -2085,19 +2086,28 @@ async def cloud_agent_loop():
     home can reach this dashboard, and so brew-done pushes can go through
     the hub. Does nothing (just sleeps) when not configured, or when the
     account isn't active — cheap to always have running."""
-    global _hub_agent_ws
+    global _hub_agent_ws, _hub_wake
+    _hub_wake = asyncio.Event()
+
+    async def nap(seconds):
+        try:
+            await asyncio.wait_for(_hub_wake.wait(), seconds)
+        except asyncio.TimeoutError:
+            pass
+        _hub_wake.clear()
+
     backoff = 2
     while True:
         try:
             if not hub_client.hub.configured:
-                await asyncio.sleep(30)
+                await nap(30)
                 continue
             status = await hub_client.hub.account_status()
             if not status.get("active"):
-                await asyncio.sleep(60)
+                await nap(60)
                 continue
 
-            async with aiohttp.ClientSession() as http:
+            async with hub_client.session() as http:
                 async with http.ws_connect(hub_client.hub.agent_ws_url(), heartbeat=30) as ws:
                     _hub_agent_ws = ws
                     ws_clients.add(ws)
@@ -2474,11 +2484,17 @@ async def handle_hub_verify(request):
     if not hub_url or not email or not code:
         return web.json_response({"ok": False, "error": "missing_fields"}, status=400)
     result = await hub_client.hub.verify_code(hub_url, email, code)
+    if result.get("ok") and _hub_wake is not None:
+        _hub_wake.set()  # connect now, not at the agent loop's next 30 s check
     return web.json_response(result)
 
 
 async def handle_hub_signout(request):
     hub_client.hub.sign_out()
+    if _hub_agent_ws is not None and not _hub_agent_ws.closed:
+        await _hub_agent_ws.close()  # drop remote access right away
+    if _hub_wake is not None:
+        _hub_wake.set()
     return web.json_response({"ok": True})
 
 

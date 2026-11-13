@@ -1903,3 +1903,9 @@ html, body, .app-shell, .hero-card, .side-panel, .strip-card, .pour-timeline, .c
 }
 .lang-seg { flex: none; width: auto; }
 .lang-seg > button { padding: 0 14px; }
+
+/* Nuqta Cloud sign-in sheet */
+.cloud-note { font-size: 13.5px; line-height: 1.6; color: var(--muted-2); }
+.cloud-note b { color: var(--text); font-weight: 600; }
+.cloud-err { font-size: 13px; color: var(--stop-fg); }
+.modal input.cloud-code { text-align: center; font-family: 'Doto', monospace; font-weight: 900; font-size: 26px; letter-spacing: .35em; }
