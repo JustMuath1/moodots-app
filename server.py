@@ -58,6 +58,7 @@ CMD_BYPASS_DOSE   = 8102
 CMD_SET_CUP       = 8104
 CMD_RECIPE_GRIND  = 8001
 CMD_RECIPE_NO_GRIND = 8004
+GRIND_SKIP        = 0xFE   # grind byte meaning "no grinder" (pre-ground)
 CMD_EXECUTE       = 8002
 CMD_QUIT_RECIPE   = 8017
 CMD_TARE          = 8500
@@ -268,7 +269,9 @@ def encode_recipe_blob(recipe):
     blob = bytearray()
     blob.append(len(parts) & 0xFF)
     blob.extend(parts)
-    gs = min(recipe.get("grind_size", 0), 80) if grind_on else 0
+    # grind byte: 1-80 = grind size. 0 is NOT "off" - the machine grinds at its finest setting.
+    # 0xFE tells it to skip the grinder (pre-ground coffee). Source: xbloom-api-doc recipe-payload.md.
+    gs = max(1, min(int(recipe.get("grind_size", 0)), 80)) if grind_on else GRIND_SKIP
     blob.append(gs)
     blob.append(ratio_byte)
     return bytes(blob)
@@ -3419,6 +3422,37 @@ async def handle_reset_modes(request):
     return web.json_response({"ok": True, "confirmed": not brewer_dirty, "activity_code": state.activity_code})
 
 
+async def handle_test_set_volume(request):
+    """POST /api/machine/test-volume?ml=N (this computer only, diagnostics): send a water amount from the
+    home screen and stop at once if the machine starts pouring. Reports what the machine did."""
+    global _trace_all_until
+    if request.remote not in ("127.0.0.1", "::1"):
+        return web.json_response({"error": "local only"}, status=403)
+    if state.brew_active or not _is_connected():
+        return web.json_response({"ok": False, "error": "busy_or_offline"})
+    ml = max(30, min(500, int(request.query.get("ml", "153"))))
+    _trace_all_until = time.time() + 15
+    seen = []
+    start_code, start_water = state.activity_code, state.water_ml
+    await send_frame(frame_brewer_start(3.0, ml, 90, pattern_to_byte(PAT_SPIRAL)))
+    poured = False
+    t0 = time.time()
+    while time.time() - t0 < 4:
+        await asyncio.sleep(0.1)
+        seen.append(state.activity_code)
+        if state.activity_code in (3, 35) or state.water_ml > start_water + 0.5:
+            poured = True
+            break
+    if poured:
+        await send_frame(frame_brewer_stop())
+        await asyncio.sleep(0.4)
+        await send_frame(frame_quit_brewer())
+        await asyncio.sleep(0.8)
+    return web.json_response({"ok": True, "ml": ml, "poured": poured, "start_code": start_code,
+                              "codes_seen": sorted(set(seen)), "water_after": round(state.water_ml, 1),
+                              "end_code": state.activity_code})
+
+
 async def handle_voice_matter_get(request):
     if request.remote not in ("127.0.0.1", "::1"):
         return web.json_response({"error": "local only"}, status=403)
@@ -3632,6 +3666,7 @@ def main():
     app.router.add_get("/api/brews/curves", handle_brew_curves)
     app.router.add_post("/api/trace", handle_trace)
     app.router.add_post("/api/machine/reset-modes", handle_reset_modes)
+    app.router.add_post("/api/machine/test-volume", handle_test_set_volume)
     app.router.add_get("/api/capabilities", handle_capabilities)
     app.router.add_get("/api/hub/status", handle_hub_status)
     app.router.add_post("/api/hub/request-code", handle_hub_request_code)
