@@ -18,7 +18,7 @@ const TX = {
     notSubscribed: 'تم ربط الجهاز، لكن لا توجد نقطة برو على هذا البريد بعد.',
     errors: {
       invalid_email: 'البريد غير صحيح.', rate_limited: 'انتظر قليلاً ثم أعد المحاولة.',
-      invalid_code: 'الرمز غير صحيح أو انتهت صلاحيته.', unreachable: 'تعذّر الوصول إلى Nuqta Cloud. تحقق من الإنترنت.',
+      invalid_code: 'الرمز غير صحيح. أعد كتابته.', expired_code: 'انتهت صلاحية الرمز. اطلب رمزاً جديداً.', unreachable: 'تعذّر الوصول إلى Nuqta Cloud. تحقق من الإنترنت.',
       send_failed: 'تعذّر إرسال البريد. حاول لاحقاً.', default: 'حدث خطأ. حاول مرة أخرى.',
     },
   },
@@ -33,7 +33,7 @@ const TX = {
     notSubscribed: 'This device is linked, but there’s no Nuqta Pro on this email yet.',
     errors: {
       invalid_email: 'That email doesn’t look right.', rate_limited: 'Wait a moment, then try again.',
-      invalid_code: 'Wrong or expired code.', unreachable: 'Can’t reach Nuqta Cloud. Check the internet.',
+      invalid_code: 'That code isn’t right. Type it again.', expired_code: 'This code has expired. Ask for a new one.', unreachable: 'Can’t reach Nuqta Cloud. Check the internet.',
       send_failed: 'Couldn’t send the email. Try again later.', default: 'Something went wrong. Try again.',
     },
   },
@@ -75,7 +75,7 @@ export default function CloudSheet({ lang, onClose }) {
     setError(''); setBusy(true);
     const res = await post('/api/hub/verify', { hub_url: HUB_URL, email: email.trim(), code: code.trim() });
     setBusy(false);
-    if (res.ok) refresh(); else fail(res);
+    if (res.ok) refresh(); else { fail(res); setCode(''); }
   };
 
   const signOut = async () => { await post('/api/hub/signout'); setStep('email'); setCode(''); refresh(); };

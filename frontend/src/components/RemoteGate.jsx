@@ -17,7 +17,7 @@ const TX = {
     err_invalid: 'البريد غير صحيح. تحقّق منه وحاول مرة أخرى.', err_wait: 'انتظر قليلاً قبل طلب رمز جديد.',
     err_send: 'تعذّر إرسال الرمز. حاول بعد قليل.', err_net: 'لا يوجد اتصال بالإنترنت. حاول مرة أخرى.',
     wait_btn: 'حاول بعد', code_title: 'أدخل الرمز', code_sub: 'أرسلنا رمزاً من 6 أرقام إلى',
-    verify: 'تحقّق', verifying: 'جارٍ التحقق…', change: 'تغيير البريد',
+    verify: 'تحقّق', verifying: 'جارٍ التحقق…', change: 'تغيير البريد', clear: 'مسح',
     err_wrong: 'الرمز غير صحيح. تحقّق منه وحاول مرة أخرى.', err_exp: 'انتهت صلاحية الرمز. اطلب رمزاً جديداً.',
     resend: 'إرسال رمز جديد', resend_in: 'رمز جديد بعد',
     conn_title: 'يتّصل بمنزلك…', conn_sub: 'نصل إلى الكمبيوتر الذي يشغّل نقطة',
@@ -35,7 +35,7 @@ const TX = {
     err_invalid: "That email doesn't look right. Check it and try again.", err_wait: 'Wait a moment before asking for another code.',
     err_send: "Couldn't send the code. Try again shortly.", err_net: 'No internet connection. Try again.',
     wait_btn: 'Try again in', code_title: 'Enter the code', code_sub: 'We sent a 6-digit code to',
-    verify: 'Verify', verifying: 'Verifying…', change: 'Change email',
+    verify: 'Verify', verifying: 'Verifying…', change: 'Change email', clear: 'Clear',
     err_wrong: "That code isn't right. Check it and try again.", err_exp: 'This code has expired. Ask for a new one.',
     resend: 'Send a new code', resend_in: 'New code in',
     conn_title: 'Reaching your home…', conn_sub: 'Connecting to the computer running Nuqta',
@@ -189,6 +189,15 @@ export default function RemoteGate({ children }) {
     if (v.length === 6) verify(v);
   };
 
+  // The real input is invisible on top of the cells, so keep its caret at the end:
+  // otherwise a tap lands the caret mid-number and Backspace seems to do nothing.
+  const caretToEnd = (e) => { const el = e.target; const n = el.value.length; try { if (el.selectionStart !== n || el.selectionEnd !== n) el.setSelectionRange(n, n); } catch {} };
+  const onCodeKey = (e) => {
+    if (e.key === 'Enter') { verify(); return; }
+    if ((e.key === 'Backspace' || e.key === 'Delete') && err === 'wrong') { e.preventDefault(); setErr(''); setWrongCode(''); setCode(''); }
+  };
+  const clearCode = () => { setErr((x) => (x === 'wrong' ? '' : x)); setWrongCode(''); setCode(''); codeRef.current?.focus(); };
+
   if (phase === 'ready') return children;
 
   let body;
@@ -223,7 +232,7 @@ export default function RemoteGate({ children }) {
         <div className={`rg-cells${err === 'wrong' ? ' bad' : ''}`} dir="ltr" onClick={() => codeRef.current?.focus()}>
           {cells.map((d, i) => <span key={i} className={`rg-cell${i === code.length && !err ? ' active' : ''}`}>{d}</span>)}
           <input ref={codeRef} className="rg-code-input" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={onCode}
-            onKeyDown={(e) => e.key === 'Enter' && verify()} aria-label={T.code_title} autoFocus />
+            onKeyDown={onCodeKey} onSelect={caretToEnd} onFocus={caretToEnd} onClick={caretToEnd} aria-label={T.code_title} autoFocus />
         </div>
         {err === 'wrong' && <ErrLine>{T.err_wrong}</ErrLine>}
         {err === 'exp' && <ErrLine>{T.err_exp}</ErrLine>}
@@ -233,6 +242,7 @@ export default function RemoteGate({ children }) {
         <button className="rg-btn" onClick={() => verify()} disabled={(code.length !== 6 && err !== 'wrong') || busy || err === 'exp'}>{busy ? T.verifying : T.verify}</button>
         <div className="rg-row">
           <button className="rg-link" onClick={() => { setPhase('email'); setErr(''); setCode(''); }}>{T.change}</button>
+          {(code || err === 'wrong') && <button className="rg-link quiet" onClick={clearCode}>{T.clear}</button>}
           {wait > 0 && err !== 'exp'
             ? <span className="rg-faint">{T.resend_in} <span dir="ltr">{mmss(wait)}</span></span>
             : <button className="rg-link" onClick={sendCode} disabled={busy}>{T.resend}</button>}

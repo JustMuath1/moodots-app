@@ -2009,3 +2009,18 @@ a.nb { display: inline-flex; align-items: center; justify-content: center; text-
 .cup-sheet .cup-btns { display: flex; gap: 10px; }
 .cup-sheet .cup-btns .nb { flex: 1; height: 44px; }
 .cup-sheet .cup-btns .nb-primary { flex: 1.5; }
+.rg-link.quiet { color: #A89E93; font-weight: 500; }
+
+/* Sheets on large screens: buttons scale up there, so the sheet grows with them
+   and its buttons can never be wider than the sheet. */
+.modal .btn-row { flex-wrap: wrap; }
+.modal .btn-row .nb { min-width: 0; flex: 0 1 auto; }
+.modal .btn-row .nb-primary { flex: 1 1 auto; }
+@media (min-width: 1440px) {
+  .modal:not(.pro-sheet) { max-width: clamp(360px, 26vw, 500px); padding: clamp(20px, 1.5vw, 28px); }
+  .modal.pro-sheet { max-width: clamp(480px, 32vw, 600px); }
+  .modal-title { font-size: clamp(18px, 1.2vw, 22px); }
+  .modal .alert-text b { font-size: clamp(14px, 0.95vw, 17px); }
+  .modal .alert-text span, .cloud-note { font-size: clamp(13px, 0.85vw, 15.5px); }
+  .modal input { height: clamp(48px, 5vh, 60px); font-size: clamp(15px, 1vw, 18px); }
+}
