@@ -34,6 +34,7 @@ from cryptography.hazmat.primitives.asymmetric import padding as rsa_padding
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
 
 import hub_client
+from html import escape as html_escape
 
 log = logging.getLogger("xbloom")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(name)s  %(message)s")
@@ -2622,7 +2623,24 @@ async def handle_voice_shortcut(request):
         return web.json_response({"ok": False, "error": "cross_origin"}, status=403)
     if not pro_active():
         return web.json_response({"ok": False, "error": "pro_required"}, status=402)
-    return await _voice_entry(request, action, "shortcut")
+    # Opened as a page in a browser (address bar, a restored tab, an NFC tag): ask first.
+    # A tab that reloads by itself must never start a brew. Shortcuts and other apps
+    # send no such header and run straight away.
+    if request.method == "GET" and request.headers.get("Sec-Fetch-Dest") == "document":
+        label = html_escape(request.match_info["action"].replace("-", " ").title())
+        page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/><title>Nuqta · {label}</title>
+<style>body{{margin:0;min-height:100vh;display:grid;place-items:center;background:#12100E;color:#F3EDE4;font-family:-apple-system,'Segoe UI',sans-serif}}
+form{{text-align:center;padding:24px}}h1{{font-size:22px;margin:0 0 6px}}p{{color:#A89E93;font-size:14px;margin:0 0 20px}}
+button{{height:52px;padding:0 36px;border:0;border-radius:16px;background:#E3925A;color:#1A120B;font-size:17px;font-weight:700}}</style></head>
+<body><form method="post"><h1>{label}</h1><p>Nuqta · tap to run this on your machine</p><button>Run now</button></form></body></html>"""
+        return web.Response(text=page, content_type="text/html", headers={"Cache-Control": "no-store"})
+    resp = await _voice_entry(request, action, "shortcut")
+    if request.method == "POST" and request.headers.get("Sec-Fetch-Dest") == "document":
+        ok = json.loads(resp.text or "{}").get("ok")
+        return web.Response(text=f"<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><body style='margin:0;min-height:100vh;display:grid;place-items:center;background:#12100E;color:#F3EDE4;font-family:-apple-system,sans-serif;font-size:20px'>{'Done ✓' if ok else 'Refused — see the Voice log in Nuqta'}</body>",
+                            content_type="text/html", headers={"Cache-Control": "no-store"})
+    return resp
 
 
 async def handle_voice_confirm(request):
