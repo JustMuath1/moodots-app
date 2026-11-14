@@ -15,7 +15,7 @@ const TX = {
     bHelper: 'The Alexa helper is not installed on this computer.', howInstall: 'How to install',
     helperHow: 'On the computer running Nuqta, run the Nuqta installer again; it installs the Alexa helper. Then restart Nuqta.',
     bDisc: 'The machine is not connected over Bluetooth. Voice commands will be refused.', connect: 'Connect',
-    bAsleep: 'The machine is asleep. Wake it, or say "Alexa, turn on wake coffee machine".', wake: 'Wake',
+    bAsleep: 'The machine is asleep. Wake it, or say "Alexa, turn on coffee machine".', wake: 'Wake',
     bBrew: (r) => `Brewing ${r || ''}. Any new brew is refused until it ends.`, stop: 'Stop',
     alexa: 'Amazon Alexa', apple: 'Apple Home', google: 'Google Home', connected: 'Connected', notSetUp: 'Not set up', later: 'Coming later',
     alexaHow: 'Works today. Discover devices in the Alexa app, on the same Wi-Fi.',
@@ -30,13 +30,21 @@ const TX = {
     price: 'SAR · one-time · for life', getPro: 'Get Nuqta Pro', locked: 'This part is in Nuqta Pro',
     hSpoken: 'Spoken name', hOn: 'When turned on', hOff: 'When turned off', hState: 'State', momentary: 'Momentary', same: 'Same',
     dev: {
-      coffee: ['Coffee', '“Alexa, turn on coffee · xbloom”', 'Brew the selected recipe', 'Stop the brew'],
+      coffee: ['Coffee', '“Alexa, turn on coffee”', 'Brew the selected recipe', 'Stop the brew'],
       pause: ['Coffee Pause', '“Alexa, turn on coffee pause”', 'Pause the brew', 'Resume'],
       water: ['Hot Water', '“Alexa, turn on hot water”', (s) => `Pour ${s.water_ml} ml at ${s.water_temp}°`, 'Stop'],
-      grind: ['Grinder', '“Alexa, turn on coffee grinder”', (s) => `Start grinding, stops after ${s.grind_s} s`, 'Stop'],
-      scale: ['Scale', '“Alexa, turn on tare scale”', 'Zero the scale', null],
-      wake: ['Coffee Machine', '“Alexa, turn on wake coffee machine”', 'Wake the machine', null],
+      grind: ['Grinder', '“Alexa, turn on grinder”', (s) => `Start grinding, stops after ${s.grind_s} s`, 'Stop'],
+      scale: ['Scale', '“Alexa, turn on scale”', 'Zero the scale', null],
+      wake: ['Coffee Machine', '“Alexa, turn on coffee machine”', 'Wake the machine', null],
     },
+    chooseTitle: 'Choose what Alexa gets', chooseSub: 'Only what is switched on here is sent to Alexa. Choose first, then run Discover in the Alexa app.',
+    gFunctions: 'Machine', gRecipes: 'Recipes', brewIt: (n) => `Brew ${n}`, nameFirst: 'Give it a spoken name first', editNames: 'Names and order',
+    chosen: (n) => `${n} chosen`, sendHint: 'Changed. In the Alexa app: Add device → Discover.',
+    fresh: 'Start fresh', freshTitle: 'Remove everything from Alexa and set it up again',
+    fresh1: 'Press Reset below. Every Nuqta device gets a new identity, so the old ones in Alexa stop answering.',
+    fresh2: 'In the Alexa app, open Devices and delete the old Nuqta devices. They show as “Device is unresponsive”.',
+    fresh3: 'Choose what you want on the Devices tab, then in the Alexa app: Add device → Discover.',
+    freshBtn: 'Reset devices', freshDone: 'Reset. Old devices no longer answer. Delete them in the Alexa app, then Discover.', cancel: 'Cancel',
     recCmds: 'Recipe commands', enabledOf: (a) => `${a} of 10 enabled`, recLink: 'Recipes',
     recTitle: 'Recipe voice commands', of10: 'of 10', star: '★ = default coffee', typeName: 'Type a name in English letters',
     pArabic: 'Arabic name may not be spoken', pEmoji: 'Emoji cannot be spoken', pEmpty: 'Needs a spoken name', pDup: 'Name already used',
@@ -62,7 +70,7 @@ const TX = {
     bHelper: 'مساعد Alexa غير مثبّت على هذا الكمبيوتر.', howInstall: 'كيف أثبّته',
     helperHow: 'على الكمبيوتر الذي يشغّل نقطة، شغّل مثبّت نقطة مرة أخرى؛ يثبّت مساعد Alexa. ثم أعد تشغيل نقطة.',
     bDisc: 'المكنة غير متصلة بالبلوتوث. الأوامر الصوتية ستُرفض.', connect: 'اتصال',
-    bAsleep: 'المكنة نائمة. أيقظها أو قل «Alexa, turn on wake coffee machine».', wake: 'إيقاظ',
+    bAsleep: 'المكنة نائمة. أيقظها أو قل «Alexa, turn on coffee machine».', wake: 'إيقاظ',
     bBrew: (r) => `تحضير جارٍ: ${r || ''}. أي تحضير جديد سيُرفض حتى ينتهي.`, stop: 'إيقاف',
     alexa: 'Amazon Alexa', apple: 'Apple Home', google: 'Google Home', connected: 'متصل', notSetUp: 'غير مُعدّ', later: 'قريباً',
     alexaHow: 'يعمل اليوم. اكتشف الأجهزة من تطبيق Alexa على نفس الواي فاي.',
@@ -77,13 +85,21 @@ const TX = {
     price: 'ر.س · مرة واحدة · مدى الحياة', getPro: 'احصل على نقطة برو', locked: 'هذا الجزء في نقطة برو',
     hSpoken: 'الاسم المنطوق', hOn: 'عند التشغيل', hOff: 'عند الإيقاف', hState: 'الحالة', momentary: 'لحظي', same: 'نفسه',
     dev: {
-      coffee: ['Coffee', '«Alexa, turn on coffee · xbloom»', 'تحضير الوصفة المختارة', 'إيقاف التحضير'],
+      coffee: ['Coffee', '«Alexa, turn on coffee»', 'تحضير الوصفة المختارة', 'إيقاف التحضير'],
       pause: ['Coffee Pause', '«Alexa, turn on coffee pause»', 'إيقاف مؤقت للتحضير', 'متابعة'],
       water: ['Hot Water', '«Alexa, turn on hot water»', (s) => `صبّ ${s.water_ml} مل عند ${s.water_temp}°`, 'إيقاف'],
-      grind: ['Grinder', '«Alexa, turn on coffee grinder»', (s) => `بدء الطحن، يتوقف بعد ${s.grind_s} ث`, 'إيقاف'],
-      scale: ['Scale', '«Alexa, turn on tare scale»', 'تصفير الميزان', null],
-      wake: ['Coffee Machine', '«Alexa, turn on wake coffee machine»', 'إيقاظ المكنة', null],
+      grind: ['Grinder', '«Alexa, turn on grinder»', (s) => `بدء الطحن، يتوقف بعد ${s.grind_s} ث`, 'إيقاف'],
+      scale: ['Scale', '«Alexa, turn on scale»', 'تصفير الميزان', null],
+      wake: ['Coffee Machine', '«Alexa, turn on coffee machine»', 'إيقاظ المكنة', null],
     },
+    chooseTitle: 'اختر ما يصل إلى Alexa', chooseSub: 'لا يُرسل إلى Alexa إلا ما تفعّله هنا. اختر أولاً، ثم شغّل الاكتشاف في تطبيق Alexa.',
+    gFunctions: 'المكنة', gRecipes: 'الوصفات', brewIt: (n) => `تحضير ${n}`, nameFirst: 'أعطها اسماً منطوقاً أولاً', editNames: 'الأسماء والترتيب',
+    chosen: (n) => `${n} مختارة`, sendHint: 'تم التغيير. في تطبيق Alexa: إضافة جهاز ← اكتشاف.',
+    fresh: 'ابدأ من جديد', freshTitle: 'احذف كل شيء من Alexa وأعد الإعداد',
+    fresh1: 'اضغط «إعادة ضبط» بالأسفل. تأخذ كل أجهزة نقطة هوية جديدة، فتتوقف القديمة في Alexa عن الاستجابة.',
+    fresh2: 'في تطبيق Alexa افتح الأجهزة واحذف أجهزة نقطة القديمة. تظهر بعبارة «الجهاز لا يستجيب».',
+    fresh3: 'اختر ما تريده من تبويب الأجهزة، ثم في تطبيق Alexa: إضافة جهاز ← اكتشاف.',
+    freshBtn: 'إعادة ضبط الأجهزة', freshDone: 'تمت إعادة الضبط. الأجهزة القديمة لم تعد تستجيب. احذفها من تطبيق Alexa ثم شغّل الاكتشاف.', cancel: 'إلغاء',
     recCmds: 'أوامر الوصفات', enabledOf: (a) => `${a} من 10 مفعّلة`, recLink: 'الوصفات',
     recTitle: 'الأوامر الصوتية للوصفات', of10: 'من 10', star: '★ = القهوة الافتراضية', typeName: 'اكتب اسماً بحروف إنجليزية',
     pArabic: 'الاسم العربي قد لا يُنطق', pEmoji: 'الرموز لا تُنطق', pEmpty: 'يحتاج اسماً منطوقاً', pDup: 'الاسم مستخدم',
@@ -155,6 +171,7 @@ export default function VoicePage({ lang, machine, tick, onBack, onGetPro, onCon
   const [tab, setTab] = useState('overview');
   const [copied, setCopied] = useState('');
   const [helperHelp, setHelperHelp] = useState(false);
+  const [fresh, setFresh] = useState(false);
   const [names, setNames] = useState({});            // voice names being typed, before they're saved
   const saveTimer = useRef(null);
 
@@ -239,7 +256,10 @@ export default function VoicePage({ lang, machine, tick, onBack, onGetPro, onCon
                 <p>{how}</p>
                 {soon
                   ? <button className="nb nb-secondary" disabled>{T.setUp}</button>
-                  : <button className="nb nb-secondary" disabled={!d.enabled || !d.helper} onClick={() => patch({ rediscover: true }).then(() => showToast?.(T.rediscovered, 'info'))}>{T.rediscover}</button>}
+                  : <>
+                    <button className="nb nb-secondary" disabled={!d.enabled || !d.helper} onClick={() => patch({ rediscover: true }).then(() => showToast?.(T.rediscovered, 'info'))}>{T.rediscover}</button>
+                    <button className="vc-link start" disabled={!d.helper} onClick={() => setFresh(true)}>{T.fresh}</button>
+                  </>}
               </div>
             ))}
           </div>
@@ -281,8 +301,17 @@ export default function VoicePage({ lang, machine, tick, onBack, onGetPro, onCon
       </div>
     );
   } else if (tab === 'devices') {
+    const toggleRecipe = (name, v) => saveRecipes(d.recipes.map((x) => (x.name === name ? { ...x, on: v } : x)));
     body = (
       <div className="vc-table">
+        <div className="vc-choose">
+          <div><b>{T.chooseTitle}</b><span>{T.chooseSub}</span></div>
+          <span className="vc-chip accent">{T.chosen(d.count)}</span>
+        </div>
+        {d.needs_discover && d.enabled && (
+          <div className="vc-banner warn"><span>{T.sendHint}</span><button className="nb nb-secondary nb-sm" onClick={() => patch({ discovered: true })}>{T.done}</button></div>
+        )}
+        <div className="vc-group">{T.gFunctions}</div>
         <div className="vc-thead"><span>{T.hSpoken}</span><span>{T.hOn}</span><span>{T.hOff}</span><span>{T.hState}</span><span /></div>
         {d.devices.map((dv) => {
           const [name, phrase, on, off] = T.dev[dv.key];
@@ -296,7 +325,16 @@ export default function VoicePage({ lang, machine, tick, onBack, onGetPro, onCon
             </div>
           );
         })}
-        <div className="vc-row link"><div className="vc-cell name"><b>{T.recCmds}</b><span>· {T.enabledOf(enabledRecipes)}</span></div><button className="nb nb-secondary nb-sm" onClick={() => setTab('recipes')}>{T.recLink} →</button></div>
+        <div className="vc-group">{T.gRecipes} <span>· {T.enabledOf(enabledRecipes)}</span><button className="vc-link" onClick={() => setTab('recipes')}>{T.editNames} →</button></div>
+        {d.recipes.map((r) => (
+          <div key={r.name} className={`vc-row${r.on ? '' : ' dim'}`}>
+            <div className="vc-cell name"><b dir="ltr">{r.voice || '—'}</b><span dir="ltr">{r.voice ? `“Alexa, turn on ${r.voice}”` : ''}</span></div>
+            <div className="vc-cell" dir="auto">{T.brewIt(r.name)}</div>
+            <div className="vc-cell muted">{r.problem ? T.nameFirst : T.dev.coffee[3]}</div>
+            <div className="vc-cell"><span className="vc-chip idle"><i />{T.off}</span></div>
+            <Switch on={r.on} disabled={Boolean(r.problem)} label={r.name} onChange={(v) => toggleRecipe(r.name, v)} />
+          </div>
+        ))}
       </div>
     );
   } else if (tab === 'recipes') {
@@ -402,6 +440,19 @@ export default function VoicePage({ lang, machine, tick, onBack, onGetPro, onCon
       </div>
       {banner && (
         <div className={`vc-banner ${banner.cls}`}><span>{banner.text}</span>{banner.btn && <button className="nb nb-secondary nb-sm" onClick={banner.act}>{banner.btn}</button>}</div>
+      )}
+
+      {fresh && (
+        <div className="modal-overlay" onClick={() => setFresh(false)}>
+          <div className="modal sheet-form vc-fresh" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title">{T.freshTitle}</div>
+            <ol>{[T.fresh1, T.fresh2, T.fresh3].map((x, i) => <li key={i}><span dir="ltr">{i + 1}</span>{x}</li>)}</ol>
+            <div className="btn-row">
+              <button className="nb nb-secondary" onClick={() => setFresh(false)}>{T.cancel}</button>
+              <button className="nb nb-primary" onClick={() => patch({ fresh: true }).then(() => { setFresh(false); showToast?.(T.freshDone, 'info'); setTab('devices'); })}>{T.freshBtn}</button>
+            </div>
+          </div>
+        </div>
       )}
 
       <div className={`vc-body${lockedTab ? ' locked' : ''}`}>

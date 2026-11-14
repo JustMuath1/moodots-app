@@ -2202,3 +2202,13 @@ a.nb { display: inline-flex; align-items: center; justify-content: center; text-
   .vc-log-row .vc-why { grid-column: 1 / -1; }
   .vc-opt { flex-wrap: wrap; }
 }
+.vc-choose { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 4px 6px; }
+.vc-choose > div { display: flex; flex-direction: column; gap: 3px; }
+.vc-choose b { font-size: 16px; } .vc-choose span:not(.vc-chip) { font-size: 13px; color: var(--muted); }
+.vc-group { display: flex; align-items: baseline; gap: 8px; font-size: 13px; font-weight: 700; color: var(--muted-2); padding: 10px 4px 2px; }
+.vc-group span { font-weight: 500; color: var(--muted); } .vc-group .vc-link { margin-inline-start: auto; }
+.vc-link.start { align-self: flex-start; padding: 0; }
+.vc-link:disabled { opacity: .4; cursor: default; }
+.vc-fresh ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.vc-fresh li { display: flex; gap: 12px; font-size: 14px; line-height: 1.55; color: var(--muted-2); }
+.vc-fresh li span { font-family: 'Doto', monospace; font-weight: 900; font-size: 18px; color: var(--accent); flex: none; }

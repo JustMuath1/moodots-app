@@ -2527,7 +2527,7 @@ def voice_recipe_slots() -> list:
             continue
         seen.add(n)
         auto = "" if ARABIC_RE.search(n) else n
-        slots.append({"name": n, "voice": auto, "on": stored is None})
+        slots.append({"name": n, "voice": auto, "on": False})   # a recipe is only sent to Alexa once it's chosen
     slots = slots[:10]
     used = set()
     for sl in slots:
@@ -2683,6 +2683,7 @@ def voice_payload() -> dict:
         "log": _voice_log[:50] if pro else _voice_log[:1],
         "needs_discover": voice_needs_discover(),
         "bases": bases,
+        "gen": int(_voice.get("gen") or 0),
         "pending": (_voice_pending or {}).get("recipe"),
     }
 
@@ -2703,6 +2704,11 @@ async def handle_voice_post(request):
     if b.get("discovered"):
         _voice["known_names"] = sorted(_voice_device_names)
     if b.get("rediscover"):
+        restart = True
+    if b.get("fresh"):
+        # new identities for every device: Alexa adds them as new on its next discovery
+        _voice["gen"] = int(_voice.get("gen") or 0) + 1
+        _voice["known_names"] = []
         restart = True
     pro_keys = ("device", "recipes", "default", "safety")
     if any(k in b for k in pro_keys) and not pro_active():
@@ -3081,40 +3087,26 @@ def start_fauxmo(server_port: int):
             d.update(use_fake_state=True, initial_state="off")
         return d
 
+    # one device per function, with a short name that is easy to say
     base = [
-        ("coffee", plug("xbloom", 12340, "/api/alexa/brew", "/api/alexa/stop", state="brew")),
-        ("scale", plug("Tare Scale", 12341, "/api/alexa/tare", "/api/alexa/tare", fake=True)),
-        ("wake", plug("Wake Coffee Machine", 12342, "/api/alexa/wake", "/api/alexa/wake", fake=True)),
+        ("coffee", plug("Coffee", 12346, "/api/alexa/brew", "/api/alexa/stop", state="brew")),
         ("pause", plug("Coffee Pause", 12343, "/api/alexa/pause", "/api/alexa/resume", state="pause")),
         ("water", plug("Hot Water", 12344, "/api/alexa/water", "/api/alexa/water_stop", state="water")),
-        ("grind", plug("Coffee Grinder", 12345, "/api/alexa/grind", "/api/alexa/grind_stop", state="grind")),
-        # short names, easy to say: "Alexa, turn on coffee" / "turn on scale" / "turn on grinder"
-        ("coffee", plug("Coffee", 12346, "/api/alexa/brew", "/api/alexa/stop", state="brew")),
-        ("scale", plug("Scale", 12347, "/api/alexa/tare", "/api/alexa/tare", fake=True)),
         ("grind", plug("Grinder", 12348, "/api/alexa/grind", "/api/alexa/grind_stop", state="grind")),
+        ("scale", plug("Scale", 12347, "/api/alexa/tare", "/api/alexa/tare", fake=True)),
         ("wake", plug("Coffee Machine", 12349, "/api/alexa/wake", "/api/alexa/wake", fake=True)),
     ]
     devices = [d for key, d in base if voice_device_on(key)]
     # one plug per recipe ("Alexa, turn on Iced V60"), up to 10
     names, seen = [], set()
     if pro_active():
-        # Pro: the recipes, order and spoken names chosen on the Voice page
+        # the recipes, order and spoken names chosen on the Voice page
         for i, sl in enumerate(voice_recipe_slots()):
             if sl["on"] and not sl["problem"] and voice_device_on("coffee"):
                 names.append(sl["name"])
                 devices.append(plug(sl["voice"], 12350 + i,
                                     f"/api/alexa/brew?recipe={urllib.parse.quote(sl['name'])}", "/api/alexa/stop",
                                     state="brew"))
-    else:
-        for i, r in enumerate(_all_recipes()):
-            spoken = alexa_name(r.get("name", ""))
-            if not spoken or spoken.lower() in seen or len(names) >= 10:
-                continue
-            seen.add(spoken.lower())
-            names.append(r.get("name", ""))
-            devices.append(plug(spoken, 12350 + len(names) - 1,
-                                f"/api/alexa/brew?recipe={urllib.parse.quote(r.get('name', ''))}", "/api/alexa/stop",
-                                state="brew"))
     _alexa_recipe_names = [r.get("name") for r in _all_recipes()][:10]
     _voice_device_names = [d["name"] for d in devices]
 
@@ -3131,12 +3123,19 @@ def start_fauxmo(server_port: int):
             _voice_device_names = []
         return
     fauxmo_bin = shutil.which("fauxmo")
-    if fauxmo_bin and not _voice.get("enabled", True):
+    helper = Path(__file__).parent / "voice_helper.py"
+
+    def stop_helpers():
+        subprocess.run(["pkill", "-f", f"voice_helper.py -c {cfg_path}"], check=False)
         subprocess.run(["pkill", "-f", f"fauxmo -c {cfg_path}"], check=False)
+
+    if fauxmo_bin and not _voice.get("enabled", True):
+        stop_helpers()
         _voice_device_names = []
         log.info("Voice control is off — Alexa helper stopped")
         return
     if fauxmo_bin:
+        stop_helpers()
         # one fauxmo only: stop any left over from an earlier run (it would hold the Alexa ports)
         subprocess.run(["pkill", "-f", f"fauxmo -c {cfg_path}"], check=False)
         if server_port == 8420:   # a helper left by an older Nuqta used this name and still holds the ports
@@ -3144,7 +3143,8 @@ def start_fauxmo(server_port: int):
         time.sleep(0.5)
         alexa_log = open(Path(__file__).parent / "alexa.log", "a")
         proc = subprocess.Popen(
-            [fauxmo_bin, "-c", str(cfg_path), "-v"],
+            [sys.executable, str(helper), "-c", str(cfg_path), "-v"]
+            + (["--salt", str(_voice["gen"])] if _voice.get("gen") else []),
             stdout=alexa_log, stderr=alexa_log,
         )
         import atexit
