@@ -2706,7 +2706,9 @@ def voice_payload() -> dict:
     return {
         "pro": pro,
         "enabled": bool(_voice.get("enabled", False)),
-        "helper": True,
+        "helper": matter_available(),
+        "matter": {"code": _matter["pairing"].get("manual", ""), "paired": bool(_matter["pairing"].get("commissioned")),
+                   "running": bool(_matter.get("proc") and _matter["proc"].poll() is None)},
         "count": len(_voice_device_names) if _voice.get("enabled", False) else 0,
         "devices": [{"key": k, "enabled": voice_device_on(k),
                      "state": "momentary" if k in ("scale", "wake") else ("on" if states.get(k) else "off")}
@@ -3111,15 +3113,21 @@ def alexa_name(name: str) -> str:
 
 
 def start_fauxmo(server_port: int):
-    """Refresh what Alexa is offered. Alexa now talks to the Hue bridge built into
-    Nuqta (see hue_handle); this only stops the older Wemo helper if one is left."""
+    """Refresh what's offered to voice assistants and restart the Matter bridge if it changed.
+    (Name kept from the older Wemo helper; any of those still running are stopped.)"""
     global _alexa_port, _alexa_recipe_names, _voice_device_names
     _alexa_port = server_port
     import subprocess
     subprocess.run(["pkill", "-f", "voice_helper.py -c"], check=False)
     subprocess.run(["pkill", "-f", "fauxmo -c .*xbloom_fauxmo"], check=False)
     _alexa_recipe_names = [r.get("name") for r in _all_recipes()][:10]
-    _voice_device_names = [v["name"] for v in hue_lights().values()]
+    offered = [(e["id"], e["name"]) for e in voice_offered()] if _voice.get("enabled", False) else []
+    _voice_device_names = [n for _, n in offered]
+    p = _matter.get("proc")
+    running = bool(p and p.poll() is None)
+    if offered != _matter.get("offered") or (offered and not running):
+        _matter["offered"] = offered
+        matter_restart()
 
 # ---------------------------------------------------------------------------
 # Weather (Open-Meteo, free, no key): current conditions + today's high/low + next hours.
@@ -3198,19 +3206,16 @@ async def handle_weather(request):
 
 
 # ---------------------------------------------------------------------------
-# Alexa: Nuqta answers as a Philips Hue bridge on the home network. Echo speakers
-# find Hue bridges by themselves and switch their "lights" locally, with no skill
-# and no account. Only the devices chosen on the Voice page are offered.
-# (This replaces the older Wemo-plug emulation, which new Echos no longer control.)
+# Voice devices. Nuqta is a local Matter bridge (matter/bridge.mjs): Alexa,
+# Apple Home and Google Home pair with it on the home network with a setup
+# code. Only the devices chosen on the Voice page are offered.
 # ---------------------------------------------------------------------------
-HUE_USER = "nuqta"
 HUE_FIXED_IDS = {"coffee": 1, "pause": 2, "water": 3, "grind": 4, "scale": 5, "wake": 6}
 HUE_NAMES = {"coffee": "Coffee", "pause": "Coffee Pause", "water": "Hot Water",
              "grind": "Grinder", "scale": "Scale", "wake": "Coffee Machine"}
 HUE_ON = {"coffee": "brew", "pause": "pause", "water": "water", "grind": "grind", "scale": "tare", "wake": "wake"}
 HUE_OFF = {"coffee": "stop", "pause": "resume", "water": "water_stop", "grind": "grind_stop"}
 _hue_seen = {"read": None, "check": None, "command": None, "command_name": "", "command_on": None, "since": int(time.time())}
-_hue_ssdp = None
 
 
 ALEXA_LOG = Path(__file__).parent / "alexa.log"
@@ -3232,11 +3237,6 @@ def _mac_hex() -> str:
     return f"{_uuid.getnode():012x}".upper()
 
 
-def hue_bridge_id() -> str:
-    m = _mac_hex()
-    return f"{m[:6]}FFFE{m[6:]}"
-
-
 def voice_offered() -> list:
     """Everything offered to Alexa (local bridge and the Nuqta skill): the devices
     and recipes chosen on the Voice page, nothing else."""
@@ -3254,18 +3254,87 @@ def voice_offered() -> list:
     return out
 
 
-def hue_lights() -> dict:
-    """{Hue light id: entry} for the local bridge."""
-    out = {}
-    for e in voice_offered():
-        if e["recipe"] is None:
-            lid = HUE_FIXED_IDS[e["key"]]
-        else:
-            lid = 100 + int(e["id"][1:7], 16) % 900
-            while str(lid) in out:
-                lid += 1
-        out[str(lid)] = e
-    return out
+MATTER_DIR = Path(__file__).parent / "matter"
+_matter = {"proc": None, "pairing": {}, "offered": None}
+
+
+def _matter_identity() -> dict:
+    """Setup code and serial, made once and kept, so a pairing survives restarts."""
+    import secrets as _sec
+    m = _voice.get("matter") or {}
+    bad = {0, 11111111, 22222222, 33333333, 44444444, 55555555, 66666666, 77777777,
+           88888888, 99999999, 12345678, 87654321}
+    if not m.get("passcode"):
+        pc = 0
+        while pc in bad:
+            pc = _sec.randbelow(99999998) + 1
+        m = {"passcode": pc, "discriminator": _sec.randbelow(4096), "serial": "nuqta-" + _sec.token_hex(6)}
+        _voice["matter"] = m
+        _voice_save()
+    return m
+
+
+def matter_available() -> bool:
+    return bool(shutil_which("node")) and (MATTER_DIR / "node_modules" / "@matter" / "main").exists()
+
+
+def matter_restart() -> None:
+    """(Re)start the Matter bridge with the devices currently offered."""
+    import subprocess
+    p = _matter.get("proc")
+    if p and p.poll() is None:
+        p.terminate()
+        try:
+            p.wait(timeout=5)
+        except Exception:
+            p.kill()
+    _matter["proc"] = None
+    _matter["pairing"] = {}
+    if os.environ.get("NUQTA_NO_ALEXA") or not _voice.get("enabled", False) or not matter_available():
+        return
+    _matter_identity()
+    env = dict(os.environ, NUQTA_URL=f"http://127.0.0.1:{_alexa_port}",
+               MATTER_STORAGE_PATH=str(Path(__file__).parent / "matter_data"))
+    out = open(ALEXA_LOG, "a")
+    _matter["proc"] = subprocess.Popen([shutil_which("node"), str(MATTER_DIR / "bridge.mjs")],
+                                       cwd=str(MATTER_DIR), env=env, stdout=out, stderr=out)
+    import atexit
+    atexit.register(lambda: _matter["proc"] and _matter["proc"].poll() is None and _matter["proc"].terminate())
+    log.info("Matter bridge started with: %s", ", ".join(e["name"] for e in voice_offered()) or "nothing")
+
+
+async def handle_voice_matter_get(request):
+    if request.remote not in ("127.0.0.1", "::1"):
+        return web.json_response({"error": "local only"}, status=403)
+    m = _matter_identity()
+    return web.json_response({"passcode": m["passcode"], "discriminator": m["discriminator"], "serial": m["serial"],
+                              "devices": [{"id": e["id"], "name": e["name"], "on": _hue_is_on(e)} for e in voice_offered()]})
+
+
+async def handle_voice_matter_post(request):
+    if request.remote not in ("127.0.0.1", "::1"):
+        return web.json_response({"error": "local only"}, status=403)
+    b = await request.json()
+    if "pairing" in b:
+        was = bool(_matter["pairing"].get("commissioned"))
+        _matter["pairing"] = dict(b["pairing"] or {})
+        if _matter["pairing"].get("commissioned") and not was:
+            _hue_seen["read"] = int(time.time())
+            await broadcast({"type": "voice"})
+        return web.json_response({"ok": True})
+    e = {x["id"]: x for x in voice_offered()}.get(str(b.get("device", "")))
+    if not e:
+        return web.json_response({"ok": False, "error": "device_off"})
+    on = bool(b.get("on"))
+    action = (HUE_ON if on else HUE_OFF).get(e["key"])
+    _hue_seen.update(command=int(time.time()), command_name=e["name"], command_on=on)
+    if not action:
+        return web.json_response({"ok": True})
+
+    class _Req:
+        query = {"recipe": e["recipe"]} if e["recipe"] else {}
+    resp = await _voice_entry(_Req(), action, "alexa")
+    return resp
 
 
 async def alexa_skill_request(ws, req: dict) -> None:
@@ -3318,135 +3387,6 @@ def _hue_is_on(entry) -> bool:
     return False
 
 
-def _hue_light_json(lid: str, entry) -> dict:
-    m = _mac_hex()
-    mac = ":".join(m[i:i + 2] for i in range(0, 12, 2))
-    return {
-        "state": {"on": _hue_is_on(entry), "bri": 254, "alert": "none", "mode": "homeautomation", "reachable": True},
-        "type": "On/Off plug-in unit", "name": entry["name"], "modelid": "Plug 01",
-        "manufacturername": "Philips", "productname": "Nuqta", "uniqueid": f"{mac}:00:11-{int(lid):02x}",
-        "swversion": "nuqta-1.0",
-    }
-
-
-def _hue_description(ip: str) -> str:
-    m = _mac_hex().lower()
-    return f"""<?xml version="1.0" ?><root xmlns="urn:schemas-upnp-org:device-1-0"><specVersion><major>1</major><minor>0</minor></specVersion><URLBase>http://{ip}:80/</URLBase><device><deviceType>urn:schemas-upnp-org:device:Basic:1</deviceType><friendlyName>Nuqta ({ip})</friendlyName><manufacturer>Royal Philips Electronics</manufacturer><manufacturerURL>http://www.philips.com</manufacturerURL><modelDescription>Philips hue Personal Wireless Lighting</modelDescription><modelName>Philips hue bridge 2012</modelName><modelNumber>929000226503</modelNumber><modelURL>http://www.meethue.com</modelURL><serialNumber>{m}</serialNumber><UDN>uuid:2f402f80-da50-11e1-9b23-{m}</UDN><presentationURL>index.html</presentationURL></device></root>"""
-
-
-async def hue_handle(request):
-    """Hue bridge API (v1) — the part Echo speakers use."""
-    path = request.path.rstrip("/")
-    ip = get_local_ip()
-    if path == "/description.xml" or path.startswith("/api"):
-        _hue_trace(f"HTTP {request.method} {request.path} from {request.remote} ua={request.headers.get('User-Agent', '')[:60]}")
-    if path == "/description.xml":
-        _hue_seen["read"] = int(time.time())
-        return web.Response(text=_hue_description(ip), content_type="text/xml")
-    if path == "/api" and request.method == "POST":
-        return web.json_response([{"success": {"username": HUE_USER}}])
-    parts = path.split("/")          # ["", "api", user, "lights", id, "state"]
-    if len(parts) < 3 or parts[1] != "api":
-        return None
-    lights = hue_lights()
-    if len(parts) == 3:
-        _hue_seen["read"] = int(time.time())
-        return web.json_response({"lights": {k: _hue_light_json(k, v) for k, v in lights.items()},
-                                  "config": {"name": "Nuqta", "bridgeid": hue_bridge_id(), "modelid": "BSB002",
-                                             "mac": ":".join(_mac_hex()[i:i + 2] for i in range(0, 12, 2)).lower(),
-                                             "apiversion": "1.17.0", "swversion": "1709131301"}})
-    if parts[3] != "lights":
-        return web.json_response({})
-    if len(parts) == 4:
-        _hue_seen["read"] = int(time.time())
-        return web.json_response({k: _hue_light_json(k, v) for k, v in lights.items()})
-    lid = parts[4]
-    entry = lights.get(lid)
-    if entry is None:
-        return web.json_response([{"error": {"type": 3, "address": f"/lights/{lid}", "description": "resource not available"}}])
-    if len(parts) == 5:
-        _hue_seen["check"] = int(time.time())
-        return web.json_response(_hue_light_json(lid, entry))
-    if parts[5] == "state" and request.method == "PUT":
-        try:
-            body = json.loads(await request.text() or "{}")
-        except Exception:
-            body = {}
-        on = bool(body.get("on", True))
-        _hue_seen.update(command=int(time.time()), command_name=entry["name"], command_on=on)
-        action = (HUE_ON if on else HUE_OFF).get(entry["key"])
-        if action:
-            # answer Alexa at once; the machine takes a few seconds to load a recipe
-            asyncio.create_task(_hue_run(action, entry["recipe"]))
-        result = [{"success": {f"/lights/{lid}/state/on": on}}]
-        if "bri" in body:
-            result.append({"success": {f"/lights/{lid}/state/bri": body["bri"]}})
-        return web.json_response(result)
-    return web.json_response([])
-
-
-async def _hue_run(action: str, recipe: str | None):
-    class _Req:            # _voice_entry reads the recipe from the query string
-        def __init__(self, recipe):
-            self.query = {"recipe": recipe} if recipe else {}
-    try:
-        await _voice_entry(_Req(recipe), action, "alexa")
-    except Exception as e:
-        log.warning("Alexa command %s failed: %s", action, e)
-
-
-class _HueSSDP(asyncio.DatagramProtocol):
-    """Answers Echo speakers searching the network for Hue bridges."""
-
-    def connection_made(self, transport):
-        self.transport = transport
-
-    def datagram_received(self, data, addr):
-        try:
-            text = data.decode("utf-8", "replace")
-        except Exception:
-            return
-        if not text.startswith("M-SEARCH") or not _voice.get("enabled", False):
-            return
-        st = re.search(r"(?im)^ST:\s*(\S+)", text)
-        st = st.group(1) if st else ""
-        if addr[0] != get_local_ip():
-            _hue_trace(f"SEARCH from {addr[0]} ST={st}")
-        if st not in ("ssdp:all", "upnp:rootdevice", "urn:schemas-upnp-org:device:basic:1", "urn:schemas-upnp-org:device:Basic:1"):
-            return
-        ip, m = get_local_ip(), _mac_hex().lower()
-        reply = ("HTTP/1.1 200 OK\r\nEXT:\r\nCACHE-CONTROL: max-age=100\r\n"
-                 f"LOCATION: http://{ip}:80/description.xml\r\n"
-                 "SERVER: FreeRTOS/7.4.2, UPnP/1.0, IpBridge/1.17.0\r\n"
-                 f"hue-bridgeid: {hue_bridge_id()}\r\n"
-                 "ST: urn:schemas-upnp-org:device:basic:1\r\n"
-                 f"USN: uuid:2f402f80-da50-11e1-9b23-{m}::upnp:rootdevice\r\n\r\n")
-        try:
-            self.transport.sendto(reply.encode(), addr)
-        except Exception:
-            pass
-
-
-async def start_hue_ssdp():
-    global _hue_ssdp
-    if _hue_ssdp is not None or os.environ.get("NUQTA_NO_ALEXA"):
-        return
-    import socket, struct
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    if hasattr(socket, "SO_REUSEPORT"):
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-    try:
-        sock.bind(("", 1900))
-        sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP,
-                        struct.pack("4s4s", socket.inet_aton("239.255.255.250"), socket.inet_aton(get_local_ip())))
-    except OSError as e:
-        log.warning("Alexa discovery not available (%s)", e)
-        sock.close()
-        return
-    loop = asyncio.get_running_loop()
-    _hue_ssdp, _ = await loop.create_datagram_endpoint(_HueSSDP, sock=sock)
-    log.info("Alexa: answering as a Hue bridge on http://%s:80", get_local_ip())
 
 
 async def start_name_redirect(app):
@@ -3456,9 +3396,6 @@ async def start_name_redirect(app):
         return
 
     async def redirect(request):
-        resp = await hue_handle(request)          # Alexa (Hue API) lives on port 80
-        if resp is not None:
-            return resp
         host = (request.host or get_local_ip()).split(":")[0]
         raise web.HTTPFound(f"http://{host}:{port}{request.path_qs}")
 
@@ -3470,7 +3407,6 @@ async def start_name_redirect(app):
         await web.TCPSite(runner, "0.0.0.0", 80, reuse_address=True).start()
         app["name_redirect"] = runner
         log.info("Port 80 redirects to the dashboard (http://%s)", get_local_ip())
-        await start_hue_ssdp()
     except OSError as e:
         await runner.cleanup()
         log.warning("Port 80 redirect not available (%s) — use http://%s:%d", e, get_local_ip(), port)
@@ -3571,6 +3507,8 @@ def main():
     app.router.add_get("/api/voice", handle_voice_get)
     app.router.add_post("/api/voice", handle_voice_post)
     app.router.add_post("/api/voice/confirm", handle_voice_confirm)
+    app.router.add_get("/api/voice/matter", handle_voice_matter_get)
+    app.router.add_post("/api/voice/matter", handle_voice_matter_post)
     app.router.add_get("/voice/{action}", handle_voice_shortcut)
     app.router.add_post("/voice/{action}", handle_voice_shortcut)
     app.router.add_get("/api/brews", handle_brews_get)

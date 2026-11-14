@@ -22,6 +22,11 @@ call npm install --silent || goto :failbuild
 call npm run build --silent || goto :failbuild
 popd
 
+echo Setting up voice control...
+pushd matter
+call npm install --silent --no-audit --no-fund || echo Voice control could not be installed - the rest of Nuqta works.
+popd
+
 echo.
 echo Nuqta is installed. Next time, start it by double-clicking start-nuqta.bat
 REM NUQTA_NO_START is set by Claude Code / scripts: install only, don't start.

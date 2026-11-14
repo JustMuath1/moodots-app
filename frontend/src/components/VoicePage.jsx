@@ -14,8 +14,8 @@ const TX = {
     bOff: 'Nothing is offered to Alexa yet. Choose your devices first, then send them.', turnOn: 'Choose devices',
     send: (n) => `Send to Alexa · ${n}`, sendNone: 'Choose at least one', stopSend: 'Stop offering', sentHint: 'Sent. Now in the Alexa app: Add device → Discover.',
     offOn: 'Offered to Alexa', offOff: 'Not offered yet',
-    bHelper: 'The Alexa helper is not installed on this computer.', howInstall: 'How to install',
-    helperHow: 'On the computer running Nuqta, run the Nuqta installer again; it installs the Alexa helper. Then restart Nuqta.',
+    bHelper: 'The voice add-on (Matter) is not installed on this computer.', howInstall: 'How to install',
+    helperHow: 'On the computer running Nuqta, run the Nuqta installer again (it needs Node.js). Then restart Nuqta.',
     bDisc: 'The machine is not connected over Bluetooth. Voice commands will be refused.', connect: 'Connect',
     bAsleep: 'The machine is asleep. Wake it, or say "Alexa, turn on coffee machine".', wake: 'Wake',
     bBrew: (r) => `Brewing ${r || ''}. Any new brew is refused until it ends.`, stop: 'Stop',
@@ -24,7 +24,8 @@ const TX = {
     appleHow: 'Scan a pairing code in the Home app on iPhone. Away from home you need an Apple TV or HomePod.',
     googleHow: 'Link your Nuqta account inside the Google Home app. It goes through the Nuqta server.',
     rediscover: 'Re-discover devices', rediscovered: 'Devices refreshed. In the Alexa app: Add device → Discover.', setUp: 'Set up',
-    steps: 'Set up in three steps', s1: 'Choose what Alexa gets on the Devices tab, then press Send to Alexa', s2: 'In the Alexa app: Add device → Discover', s3: 'Say: "Alexa, turn on coffee"',
+    steps: 'Set up in three steps', s1: 'Choose your devices on the Devices tab, then press Send to Alexa', s2: 'Alexa app: Devices → + → Add Device → Matter → enter the setup code below', s3: 'Say: "Alexa, turn on coffee"',
+    pairTitle: 'Setup code', pairSub: 'Enter it in the Alexa app (also works in Apple Home and Google Home).', paired: 'Paired', notPaired: 'Not paired yet', starting: 'Starting…',
     changed: 'Recipes changed. Run Discover devices in Alexa again.', done: 'Done',
     defCoffee: 'Default coffee', defSub: 'What “Alexa, turn on coffee” brews', recent: 'Recent commands', logLink: 'Log',
     proTitle: 'Nuqta Pro', proSub: 'A complete voice control centre. One tap to set up, updated for you.',
@@ -48,7 +49,7 @@ const TX = {
     fresh3: 'Choose what you want on the Devices tab, then in the Alexa app: Add device → Discover.',
     freshBtn: 'Reset devices', freshDone: 'Reset. Old devices no longer answer. Delete them in the Alexa app, then Discover.', cancel: 'Cancel',
     chk: 'Connection check', chkSub: 'Live. Shows how far Alexa gets.',
-    chk1: 'Alexa read your devices', chk1h: 'Say “Alexa, discover devices” near the speaker.',
+    chk1: 'Paired with Alexa', chk1h: 'Add Nuqta in the Alexa app with the setup code.',
     chk2: 'Alexa checked a device', chk2h: 'Open Devices in the Alexa app and pull down to refresh.',
     chk3: 'Alexa sent a command', chk3h: 'Tap a device in the Alexa app, or say “Alexa, turn on coffee machine”.',
     notYet: 'Not yet', ago: (s) => (s < 60 ? `${s} s ago` : s < 3600 ? `${Math.floor(s / 60)} min ago` : `${Math.floor(s / 3600)} h ago`),
@@ -77,8 +78,8 @@ const TX = {
     bOff: 'لا شيء معروض على Alexa بعد. اختر أجهزتك أولاً ثم أرسلها.', turnOn: 'اختر الأجهزة',
     send: (n) => `أرسل إلى Alexa · ${n}`, sendNone: 'اختر جهازاً واحداً على الأقل', stopSend: 'إيقاف العرض', sentHint: 'تم الإرسال. الآن في تطبيق Alexa: إضافة جهاز ← اكتشاف.',
     offOn: 'معروضة على Alexa', offOff: 'غير معروضة بعد',
-    bHelper: 'مساعد Alexa غير مثبّت على هذا الكمبيوتر.', howInstall: 'كيف أثبّته',
-    helperHow: 'على الكمبيوتر الذي يشغّل نقطة، شغّل مثبّت نقطة مرة أخرى؛ يثبّت مساعد Alexa. ثم أعد تشغيل نقطة.',
+    bHelper: 'إضافة الصوت (Matter) غير مثبّتة على هذا الكمبيوتر.', howInstall: 'كيف أثبّتها',
+    helperHow: 'على الكمبيوتر الذي يشغّل نقطة، شغّل مثبّت نقطة مرة أخرى (يحتاج Node.js). ثم أعد تشغيل نقطة.',
     bDisc: 'المكنة غير متصلة بالبلوتوث. الأوامر الصوتية ستُرفض.', connect: 'اتصال',
     bAsleep: 'المكنة نائمة. أيقظها أو قل «Alexa, turn on coffee machine».', wake: 'إيقاظ',
     bBrew: (r) => `تحضير جارٍ: ${r || ''}. أي تحضير جديد سيُرفض حتى ينتهي.`, stop: 'إيقاف',
@@ -87,7 +88,8 @@ const TX = {
     appleHow: 'امسح رمز الاقتران في تطبيق Home على iPhone. خارج المنزل تحتاج Apple TV أو HomePod.',
     googleHow: 'اربط حساب نقطة من داخل تطبيق Google Home. يمرّ عبر خادم نقطة.',
     rediscover: 'إعادة اكتشاف الأجهزة', rediscovered: 'تم تحديث الأجهزة. في تطبيق Alexa: إضافة جهاز ← اكتشاف.', setUp: 'إعداد',
-    steps: 'الإعداد في ثلاث خطوات', s1: 'اختر ما يصل إلى Alexa من تبويب الأجهزة، ثم اضغط «أرسل إلى Alexa»', s2: 'في تطبيق Alexa: إضافة جهاز ← اكتشاف', s3: 'قل: «Alexa, turn on coffee»',
+    steps: 'الإعداد في ثلاث خطوات', s1: 'اختر أجهزتك من تبويب الأجهزة، ثم اضغط «أرسل إلى Alexa»', s2: 'تطبيق Alexa: الأجهزة ← + ← إضافة جهاز ← Matter ← أدخل رمز الإعداد أدناه', s3: 'قل: «Alexa, turn on coffee»',
+    pairTitle: 'رمز الإعداد', pairSub: 'أدخله في تطبيق Alexa (يعمل أيضاً في Apple Home و Google Home).', paired: 'تم الاقتران', notPaired: 'لم يُقترن بعد', starting: 'جارٍ التشغيل…',
     changed: 'تغيّرت الوصفات. شغّل اكتشاف الأجهزة في Alexa مرة أخرى.', done: 'تم',
     defCoffee: 'القهوة الافتراضية', defSub: 'ما يحضّره «Alexa, turn on coffee»', recent: 'آخر الأوامر', logLink: 'السجل',
     proTitle: 'نقطة برو', proSub: 'مركز تحكم صوتي متكامل. إعداد بضغطة، ويتحدّث تلقائياً.',
@@ -111,7 +113,7 @@ const TX = {
     fresh3: 'اختر ما تريده من تبويب الأجهزة، ثم في تطبيق Alexa: إضافة جهاز ← اكتشاف.',
     freshBtn: 'إعادة ضبط الأجهزة', freshDone: 'تمت إعادة الضبط. الأجهزة القديمة لم تعد تستجيب. احذفها من تطبيق Alexa ثم شغّل الاكتشاف.', cancel: 'إلغاء',
     chk: 'فحص الاتصال', chkSub: 'مباشر. يوضّح إلى أين يصل Alexa.',
-    chk1: 'قرأ Alexa أجهزتك', chk1h: 'قل «Alexa, discover devices» قرب السماعة.',
+    chk1: 'تم الاقتران مع Alexa', chk1h: 'أضف نقطة في تطبيق Alexa برمز الإعداد.',
     chk2: 'فحص Alexa أحد الأجهزة', chk2h: 'افتح الأجهزة في تطبيق Alexa واسحب للتحديث.',
     chk3: 'أرسل Alexa أمراً', chk3h: 'اضغط جهازاً في تطبيق Alexa، أو قل «Alexa, turn on coffee machine».',
     notYet: 'ليس بعد', ago: (s) => (s < 60 ? `قبل ${s} ث` : s < 3600 ? `قبل ${Math.floor(s / 60)} د` : `قبل ${Math.floor(s / 3600)} س`),
@@ -284,8 +286,8 @@ export default function VoicePage({ lang, machine, tick, onBack, onGetPro, onCon
           {d.enabled && d.helper && (
             <div className="vc-card vc-check">
               <div className="vc-card-head"><b className="vc-card-title">{T.chk}</b><span className="vc-muted">{T.chkSub}</span></div>
-              {[['read', T.chk1, T.chk1h], ['check', T.chk2, T.chk2h], ['command', T.chk3, T.chk3h]].map(([k, label, hint]) => {
-                const ts = d.alexa?.[k];
+              {[['read', T.chk1, T.chk1h], ['command', T.chk3, T.chk3h]].map(([k, label, hint]) => {
+                const ts = k === 'read' ? (d.matter?.paired ? (d.alexa?.read || Date.now() / 1000) : null) : d.alexa?.[k];
                 const secs = ts ? Math.max(0, Math.round(Date.now() / 1000 - ts)) : null;
                 return (
                   <div key={k} className={`vc-check-row${ts ? ' ok' : ''}`}>
@@ -301,6 +303,13 @@ export default function VoicePage({ lang, machine, tick, onBack, onGetPro, onCon
           <div className="vc-card vc-steps">
             <b className="vc-card-title">{T.steps}</b>
             <ol>{[T.s1, T.s2, T.s3].map((s, i) => <li key={i}><span dir="ltr">{i + 1}</span>{s}</li>)}</ol>
+            {d.enabled && d.helper && (
+              <div className="vc-pair">
+                <div><b>{T.pairTitle}</b><span>{T.pairSub}</span></div>
+                <code dir="ltr">{d.matter?.code ? d.matter.code.replace(/^(\d{4})(\d{3})(\d{4})$/, '$1-$2-$3') : T.starting}</code>
+                <span className={`vc-chip ${d.matter?.paired ? 'ok' : 'idle'}`}><i />{d.matter?.paired ? T.paired : T.notPaired}</span>
+              </div>
+            )}
             {d.needs_discover && d.enabled && (
               <div className="vc-banner warn inline"><span>{T.changed}</span><button className="nb nb-secondary nb-sm" onClick={() => patch({ discovered: true })}>{T.done}</button></div>
             )}

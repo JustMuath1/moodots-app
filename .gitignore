@@ -43,3 +43,7 @@ pro_pack/
 # Voice control settings and activity log
 voice.json
 voice_log.json
+
+# Matter bridge: installed packages and the pairing it keeps
+matter/node_modules/
+matter_data/

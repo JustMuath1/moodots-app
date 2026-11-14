@@ -21,6 +21,7 @@ ok "Python packages installed."
 
 step "Building the dashboard…"
 (cd frontend && npm install --silent && npm run build --silent) || fail "The dashboard build failed — see the messages above."
+(cd matter && npm install --silent --no-audit --no-fund) || echo "Voice control (Alexa / Apple Home / Google Home) could not be installed — the rest of Nuqta works."
 ok "Dashboard built."
 
 print ""
