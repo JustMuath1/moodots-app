@@ -3139,6 +3139,8 @@ def start_fauxmo(server_port: int):
     if fauxmo_bin:
         # one fauxmo only: stop any left over from an earlier run (it would hold the Alexa ports)
         subprocess.run(["pkill", "-f", f"fauxmo -c {cfg_path}"], check=False)
+        if server_port == 8420:   # a helper left by an older Nuqta used this name and still holds the ports
+            subprocess.run(["pkill", "-f", "fauxmo -c .*xbloom_fauxmo.json"], check=False)
         time.sleep(0.5)
         alexa_log = open(Path(__file__).parent / "alexa.log", "a")
         proc = subprocess.Popen(
