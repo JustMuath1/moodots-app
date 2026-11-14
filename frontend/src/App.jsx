@@ -780,7 +780,7 @@ export default function App() {
     sendAction('load_recipe', { recipe: r });
     setTimeout(() => {
       sendAction('execute');
-      showToast(`Brewing ${r.name}`, 'success');
+      showToast(lang === 'ar' ? `جارٍ تحضير ${r.name}` : `Brewing ${r.name}`, 'success');
     }, 1500);
   }, [recipes, selectedRecipe, sendAction, showToast, lang, resetForBrew]);
   // Away from home nobody can see the machine: ask about the cup first.
