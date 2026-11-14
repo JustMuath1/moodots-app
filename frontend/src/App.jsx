@@ -32,6 +32,7 @@ import StepTracker from './components/StepTracker';
 import ThemeBoard from './components/ThemeBoard';
 import ProSheet from './components/ProSheet';
 import VoicePage from './components/VoicePage';
+import RecipesPage from './components/RecipesPage';
 import { themeLocked, standbyLocked } from './utils/pro';
 import { REMOTE, onLink, linkState, askGate, getEmail, initialLang, saveLang } from './utils/remote';
 import { CloudDots } from './components/Header';
@@ -141,7 +142,7 @@ export default function App() {
   }, []);
   const goPage = useCallback((p) => {
     const path = p === 'analytics' ? '/analytics' : '/';
-    if (!REMOTE && p !== 'voice' && window.location.pathname !== path) window.history.pushState({}, '', path);
+    if (!REMOTE && p !== 'voice' && p !== 'recipes' && window.location.pathname !== path) window.history.pushState({}, '', path);
     setPage(p);
   }, []);
   const [tab, setTab] = useState('recipes');
@@ -1162,6 +1163,9 @@ export default function App() {
         <button className={`tab-btn ${tab === 'schedules' ? 'active' : 'inactive'}`} onClick={() => setTab('schedules')}>
           {t('schedules', lang)}
         </button>
+        <button className="tab-manage" onClick={() => goPage('recipes')} title={lang === 'ar' ? 'إدارة الوصفات' : 'Manage recipes'} aria-label={lang === 'ar' ? 'إدارة الوصفات' : 'Manage recipes'}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+        </button>
       </div>
     
       {tab === 'recipes' && (loading && !recipes.length ? <SkeletonRows /> :
@@ -1240,7 +1244,13 @@ export default function App() {
       {REMOTE && !remoteLost && backOnline && <div className="remote-bar back" role="status"><span className="rb-dot" />{lang === 'ar' ? 'عاد الاتصال' : 'Back online'}</div>}
       <Clock lang={lang} className="clock-strip" />
 
-      {page === 'voice' ? (
+      {page === 'recipes' ? (
+        <div className="app-content an-content">
+          <RecipesPage lang={lang} recipes={recipes} tags={recipeTags} connected={isConnected} showToast={showToast}
+            onBack={() => goPage('home')}
+            onConnect={() => sendAction('connect', machineState.selected_machine ? { machine: machineState.selected_machine } : undefined)} />
+        </div>
+      ) : page === 'voice' ? (
         <div className="app-content an-content">
           <VoicePage lang={lang} machine={machineState} tick={voiceTick} showToast={showToast}
             onBack={() => goPage('home')} onGetPro={() => setShowPro(true)}
@@ -1300,7 +1310,7 @@ export default function App() {
       )}
 
       {rateBrew && <RatingSheet lang={lang} brew={rateBrew} onClose={(saved) => { setRateBrew(null); if (saved) loadAnalytics(); }} />}
-      {showSettings && <SettingsSheet lang={lang} fullscreen={fullscreen} onToggleLang={toggleLang} onRestart={restartServer} onOpenAccount={() => setShowAccount(true)} onOpenCloud={() => setShowCloud(true)} onOpenPro={() => setShowPro(true)} pro={caps.pro} onOpenVoice={() => goPage('voice')} remoteEmail={REMOTE ? getEmail() : ''} onSignOut={() => askGate('signout')} onClose={() => setShowSettings(false)} />}
+      {showSettings && <SettingsSheet lang={lang} fullscreen={fullscreen} onToggleLang={toggleLang} onRestart={restartServer} onOpenAccount={() => setShowAccount(true)} onOpenCloud={() => setShowCloud(true)} onOpenPro={() => setShowPro(true)} pro={caps.pro} onOpenVoice={() => goPage('voice')} onOpenRecipes={() => goPage('recipes')} remoteEmail={REMOTE ? getEmail() : ''} onSignOut={() => askGate('signout')} onClose={() => setShowSettings(false)} />}
       {showCloud && <CloudSheet lang={lang} onClose={() => { setShowCloud(false); refreshCaps(); }} />}
       {showPro && <ProSheet lang={lang} pro={caps.pro} onSignIn={() => { setShowPro(false); setShowCloud(true); }} onClose={() => setShowPro(false)} />}
       {showNotify && <NotifySheet lang={lang} soundOn={soundOn} onToggleSound={toggleSound} pushAvailable={caps.push} pro={caps.pro} onGetPro={() => { setShowNotify(false); setShowPro(true); }} onClose={() => { setShowNotify(false); refreshPush(); }} />}

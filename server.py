@@ -18,6 +18,7 @@ import logging
 import math
 import re
 import os
+import secrets
 import ssl
 import struct
 import sys
@@ -1127,9 +1128,16 @@ async def leave_modules() -> None:
     end_module_run()
 
 
+def recipe_grinds(recipe: dict) -> bool:
+    return bool(recipe.get("grinder_on", True)) and (recipe.get("grind_size") or 0) > 0
+
+
 async def _load_and_start(recipe) -> str | None:
     if not ble_client or not ble_client.is_connected:
         return "Not connected"
+    if not recipe_grinds(recipe):
+        await reset_for_brew(recipe)
+        return await start_nogrind(recipe)
     await leave_modules()
     await reset_for_brew(recipe)
     await asyncio.sleep(0.3)
@@ -1199,6 +1207,16 @@ async def _nogrind_pours(recipe: dict) -> None:
         log.warning("No-grind brew failed: %s", e)
         module_mode = ""
         await broadcast({"type": "toast", "msg": f"Brew without grinding failed: {e}", "level": "error"})
+
+
+async def start_nogrind(recipe: dict) -> str | None:
+    if nogrind_running():
+        return "A brew is running"
+    state.fault = ""
+    await leave_modules()
+    _nogrind["stop"] = False
+    _nogrind["task"] = asyncio.create_task(_nogrind_pours(recipe))
+    return None
 
 
 async def skip_grind_and_brew(fallback: dict | None = None) -> str | None:
@@ -2071,8 +2089,152 @@ async def handle_app_icon(request):
     raise web.HTTPNotFound()
 
 
+# ---- Recipes made or edited in Nuqta (Recipes page) ------------------------------------------
+# Kept on this computer in my_recipes.json. A Nuqta recipe with the same name as a starter or xBloom
+# recipe replaces it (that is how editing one of those works); deleting it brings the original back.
+MY_RECIPES_FILE = Path(__file__).parent / "my_recipes.json"
+my_recipes: list[dict] = []
+on_machine: set[str] = set()      # recipe names sent to the machine from the Recipes page
+
+
+def _load_my_recipes() -> None:
+    global my_recipes, on_machine
+    try:
+        d = json.loads(MY_RECIPES_FILE.read_text())
+        my_recipes = [r for r in d.get("recipes", []) if isinstance(r, dict) and r.get("name")]
+        on_machine = set(d.get("on_machine", []))
+    except Exception:
+        my_recipes, on_machine = [], set()
+
+
+def _save_my_recipes() -> None:
+    MY_RECIPES_FILE.write_text(json.dumps({"recipes": my_recipes, "on_machine": sorted(on_machine)},
+                                          indent=2, ensure_ascii=False))
+
+
+_load_my_recipes()
+
+
 def _all_recipes():
-    return STARTER_RECIPES + cloud_recipes
+    mine = {r["name"] for r in my_recipes}
+    base = [r for r in STARTER_RECIPES + cloud_recipes if r.get("name") not in mine]
+    return base + my_recipes
+
+
+def recipes_for_screens() -> list[dict]:
+    out = []
+    for r in _all_recipes():
+        src = "nuqta" if r.get("local") else "xbloom" if r.get("cloud") else "starter"
+        out.append({**r, "source": src, "on_machine": r.get("name") in on_machine,
+                    "overrides": bool(r.get("local") and any(x.get("name") == r["name"] for x in STARTER_RECIPES + cloud_recipes))})
+    return out
+
+
+def _clean_recipe(b: dict) -> dict | str:
+    """Check a recipe from the Recipes page and turn it into the format the machine code uses."""
+    name = str(b.get("name", "")).strip()[:40]
+    if not name:
+        return "name_required"
+    try:
+        dose = max(8, min(40, int(round(float(b.get("dose_g", 15))))))
+        grind = int(b.get("grind_size", 0) or 0)
+        pours_in = list(b.get("pours") or [])[:8]
+    except (TypeError, ValueError):
+        return "bad_values"
+    if not pours_in:
+        return "pours_required"
+    pats = {PAT_CENTERED, PAT_SPIRAL, PAT_CIRCULAR}
+    pours = []
+    for p in pours_in:
+        try:
+            pours.append({
+                "volume_ml": max(10, min(300, int(round(float(p.get("volume_ml", 50)))))),
+                "temp_c": max(80, min(100, int(round(float(p.get("temp_c", 93)))))),
+                "pattern": int(p.get("pattern", PAT_SPIRAL)) if int(p.get("pattern", PAT_SPIRAL)) in pats else PAT_SPIRAL,
+                "pause_s": max(0, min(90, int(round(float(p.get("pause_s", 0)))))),
+                "flow": max(2.0, min(4.5, float(p.get("flow", 3.0)))),
+                "agitate_before": bool(p.get("agitate_before")), "agitate_after": bool(p.get("agitate_after")),
+            })
+        except (TypeError, ValueError):
+            return "bad_values"
+    grind_on = 1 <= grind <= 80
+    return {"id": str(b.get("id") or secrets.token_hex(6)), "name": name, "local": True,
+            "dose_g": dose, "grind_size": grind if grind_on else 0, "grinder_on": grind_on,
+            "rpm": max(60, min(120, int(b.get("rpm", 100) or 100))), "cup_type": int(b.get("cup_type", 3) or 3),
+            "color": str(b.get("color") or "#E3925A")[:9], "pours": pours}
+
+
+async def _broadcast_recipes():
+    await broadcast({"type": "recipes", "data": recipes_for_screens()})
+
+
+async def handle_my_recipe_save(request):
+    """POST /api/my-recipes {recipe, type: hot|cold, old_name?}: create or update a Nuqta recipe."""
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"ok": False, "error": "bad_json"}, status=400)
+    r = _clean_recipe(body.get("recipe") or {})
+    if isinstance(r, str):
+        return web.json_response({"ok": False, "error": r}, status=400)
+    old = str(body.get("old_name") or "")
+    taken = {x["name"] for x in my_recipes if x["id"] != r["id"]}
+    if r["name"] in taken:
+        return web.json_response({"ok": False, "error": "name_taken"}, status=409)
+    others = [x for x in my_recipes if x["id"] != r["id"] and x["name"] != r["name"]]
+    others.append(r)
+    my_recipes[:] = others
+    if old and old != r["name"]:
+        on_machine.discard(old)
+    on_machine.discard(r["name"])          # changed: the machine no longer has this version
+    _save_my_recipes()
+    tag = body.get("type")
+    if tag in ("hot", "cold"):
+        recipe_tags[r["name"]] = tag
+        RECIPE_TAGS_FILE.write_text(json.dumps(recipe_tags, indent=2, ensure_ascii=False))
+        await broadcast({"type": "recipe_tags", "data": recipe_tags})
+    await _broadcast_recipes()
+    return web.json_response({"ok": True, "recipe": r})
+
+
+async def handle_my_recipe_delete(request):
+    rid = request.match_info.get("rid", "")
+    hit = next((x for x in my_recipes if x["id"] == rid), None)
+    if not hit:
+        return web.json_response({"ok": False, "error": "not_found"}, status=404)
+    my_recipes.remove(hit)
+    on_machine.discard(hit["name"])
+    _save_my_recipes()
+    await _broadcast_recipes()
+    return web.json_response({"ok": True})
+
+
+async def handle_recipe_send(request):
+    """POST /api/recipes/send {name}: load the recipe onto the machine, ready to start from it."""
+    try:
+        name = str((await request.json()).get("name", ""))
+    except Exception:
+        return web.json_response({"ok": False, "error": "bad_json"}, status=400)
+    recipe = next((r for r in _all_recipes() if r.get("name") == name), None)
+    if not recipe:
+        return web.json_response({"ok": False, "error": "not_found"}, status=404)
+    if not _is_connected():
+        return web.json_response({"ok": False, "error": "not_connected"})
+    if state.brew_active or nogrind_running():
+        return web.json_response({"ok": False, "error": "brew_running"})
+    if not recipe_grinds(recipe):
+        return web.json_response({"ok": False, "error": "no_grind"})   # the machine would grind it anyway
+    await leave_modules()
+    await reset_for_brew(recipe)
+    await asyncio.sleep(0.3)
+    for f in build_load_frames(recipe):
+        err = await send_confirmed(f)
+        if err:
+            return web.json_response({"ok": False, "error": err})
+    on_machine.add(name)
+    _save_my_recipes()
+    await _broadcast_recipes()
+    return web.json_response({"ok": True})
 
 
 async def _send_ws_snapshot(ws):
@@ -2085,7 +2247,7 @@ async def _send_ws_snapshot(ws):
     if weather_now:
         await ws.send_json({"type": "weather", "data": weather_now})
     await ws.send_json({"type": "state", "data": state_payload()})
-    await ws.send_json({"type": "recipes", "data": _all_recipes()})
+    await ws.send_json({"type": "recipes", "data": recipes_for_screens()})
     await ws.send_json({"type": "schedules", "data": schedules})
     await ws.send_json({"type": "recipe_tags", "data": recipe_tags})
     await ws.send_json({"type": "cloud_status", "data": {
@@ -2243,13 +2405,18 @@ async def _run_ws_session(ws, peer: str = ""):
                 if recipe:
                     await leave_modules()
                     await reset_for_brew(recipe)
-                    await asyncio.sleep(0.3)
-                    for f in build_load_frames(recipe):
-                        result = await send_confirmed(f)
-                        if result:
-                            break
+                    if recipe_grinds(recipe):
+                        await asyncio.sleep(0.3)
+                        for f in build_load_frames(recipe):
+                            result = await send_confirmed(f)
+                            if result:
+                                break
             elif action == "execute":
-                result = await send_confirmed(frame_execute())
+                rec = brew_session.get("recipe")
+                if rec and not recipe_grinds(rec):
+                    result = await start_nogrind(rec)      # pre-ground: pour it through the water screen
+                else:
+                    result = await send_confirmed(frame_execute())
             elif action == "quit_recipe":
                 result = await send_confirmed(frame_quit_recipe())
             elif action == "grinder_enter":
@@ -2349,7 +2516,7 @@ async def handle_cloud_login(request):
     result = await cloud_login(email, password)
     if result.get("ok"):
         recipes = await cloud_fetch_recipes()
-        await broadcast({"type": "recipes", "data": _all_recipes()})
+        await broadcast({"type": "recipes", "data": recipes_for_screens()})
         await broadcast({"type": "cloud_status", "data": {
             "signed_in": True, "email": cloud_email,
         }})
@@ -2360,7 +2527,7 @@ async def handle_cloud_sync(request):
     if not cloud_token:
         return web.json_response({"ok": False, "error": "Not signed in"})
     recipes = await cloud_fetch_recipes()
-    await broadcast({"type": "recipes", "data": _all_recipes()})
+    await broadcast({"type": "recipes", "data": recipes_for_screens()})
     return web.json_response({"ok": True, "count": len(recipes)})
 
 
@@ -2371,7 +2538,7 @@ async def handle_cloud_logout(request):
     cloud_email = ""
     cloud_recipes = []
     save_config()
-    await broadcast({"type": "recipes", "data": _all_recipes()})
+    await broadcast({"type": "recipes", "data": recipes_for_screens()})
     await broadcast({"type": "cloud_status", "data": {"signed_in": False, "email": ""}})
     return web.json_response({"ok": True})
 
@@ -3770,6 +3937,9 @@ def main():
     app.router.add_get("/api/brews/curves", handle_brew_curves)
     app.router.add_post("/api/trace", handle_trace)
     app.router.add_post("/api/machine/reset-modes", handle_reset_modes)
+    app.router.add_post("/api/my-recipes", handle_my_recipe_save)
+    app.router.add_delete("/api/my-recipes/{rid}", handle_my_recipe_delete)
+    app.router.add_post("/api/recipes/send", handle_recipe_send)
     app.router.add_post("/api/machine/test-volume", handle_test_set_volume)
     app.router.add_get("/api/capabilities", handle_capabilities)
     app.router.add_get("/api/hub/status", handle_hub_status)
