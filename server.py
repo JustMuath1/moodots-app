@@ -2225,7 +2225,11 @@ async def handle_recipe_send(request):
     if not recipe_grinds(recipe):
         return web.json_response({"ok": False, "error": "no_grind"})   # the machine would grind it anyway
     await leave_modules()
-    await reset_for_brew(recipe)
+    if state.activity_code in (4, 5):          # leave the scale screen too, so the machine shows the recipe
+        await send_frame(frame_quit_scale())
+        await asyncio.sleep(0.5)
+    # no tare here (that opens the machine's scale screen); the brew itself zeroes the scale
+    brew_session.update(recipe=recipe, user_paused=False, user_stopped=False)
     await asyncio.sleep(0.3)
     for f in build_load_frames(recipe):
         err = await send_confirmed(f)
