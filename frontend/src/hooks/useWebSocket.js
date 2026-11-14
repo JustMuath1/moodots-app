@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
+import { REMOTE, socketUrl, attachSocket, detachSocket, takeReply, setLink } from '../utils/remote';
 
 export function useWebSocket(onMessage) {
   const wsRef = useRef(null);
@@ -9,18 +10,22 @@ export function useWebSocket(onMessage) {
 
   const connect = useCallback(() => {
     if (wsRef.current && wsRef.current.readyState <= 1) return;
-    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${proto}//${location.host}/ws`);
+    const ws = new WebSocket(socketUrl());
     wsRef.current = ws;
-    ws.onopen = () => setReadyState(WebSocket.OPEN);
+    ws.onopen = () => {
+      setReadyState(WebSocket.OPEN);
+      if (REMOTE) { attachSocket(ws); setLink('up'); }
+    };
     ws.onclose = () => {
       setReadyState(WebSocket.CLOSED);
+      if (REMOTE) { detachSocket(ws); setLink('down'); }
       reconnectTimer.current = setTimeout(connect, 2000);
     };
     ws.onerror = () => ws.close();
     ws.onmessage = (e) => {
       try {
         const msg = JSON.parse(e.data);
+        if (REMOTE && takeReply(msg)) return;
         onMessageRef.current?.(msg);
       } catch {}
     };
@@ -36,7 +41,8 @@ export function useWebSocket(onMessage) {
     connect();
     return () => {
       clearTimeout(reconnectTimer.current);
-      wsRef.current?.close();
+      const ws = wsRef.current;
+      if (ws) { ws.onclose = null; if (REMOTE) { detachSocket(ws); } ws.close(); }
     };
   }, [connect]);
 

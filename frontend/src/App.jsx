@@ -32,6 +32,8 @@ import StepTracker from './components/StepTracker';
 import ThemeBoard from './components/ThemeBoard';
 import ProSheet from './components/ProSheet';
 import { themeLocked, standbyLocked } from './utils/pro';
+import { REMOTE, onLink, linkState, askGate, getEmail, initialLang, saveLang } from './utils/remote';
+import { CloudDots } from './components/Header';
 import HomeGrid, { EditBar, AddTray } from './components/HomeGrid';
 import { SPANS, loadLayout, saveLayout, DEFAULT_LAYOUT } from './utils/layout';
 import { loadAddonSettings, saveAddonSettings, VERSES } from './services/addons';
@@ -98,7 +100,7 @@ function applyOrder(recipes, savedIds) {
 }
 
 export default function App() {
-  const [lang, setLang] = useState('en');
+  const [lang, setLang] = useState(initialLang);
   const [machineState, setMachineState] = useState({
     link: 'disconnected', machine_name: '', weight_g: 0, water_ml: 0,
     activity: '', activity_code: 0, sleeping: false, fault: '', brew_active: false,
@@ -387,7 +389,7 @@ export default function App() {
 
   const sendAction = useCallback((action, extra) => send({ action, ...extra }), [send]);
   const refreshPush = useCallback(() => { pushState().then((s) => setPushOn(Boolean(s.on))).catch(() => {}); }, []);
-  const refreshCaps = useCallback(() => { fetch('/api/capabilities').then((r) => r.json()).then((c) => c && setCaps(c)).catch(() => {}); }, []);
+  const refreshCaps = useCallback(() => { fetch('/api/capabilities').then((r) => r.json()).then((c) => c && c.cloud !== undefined && setCaps(REMOTE ? { ...c, push: false } : c)).catch(() => {}); }, []);
   proRef.current = caps.pro;
   // Free app: fall back from a Pro theme or scene (e.g. after signing out)
   useEffect(() => {
@@ -416,7 +418,7 @@ export default function App() {
       if (!data.ok) showToast(data.error || 'Restart failed', 'error');
     } catch { /* the server went down mid-request: it's restarting */ }
   }, [showToast]);
-  const toggleLang = useCallback(() => setLang((l) => (l === 'en' ? 'ar' : 'en')), []);
+  const toggleLang = useCallback(() => setLang((l) => { const n = l === 'en' ? 'ar' : 'en'; saveLang(n); return n; }), []);
 
   const isConnected = machineState.link === 'connected';
   const isBrewing = machineState.brew_active;
@@ -702,7 +704,7 @@ export default function App() {
     });
   }, []);
 
-  const startBrew = useCallback(() => {
+  const doStartBrew = useCallback(() => {
     const r = recipes[selectedRecipe];
     if (!r) return;
     requestNotifyPermission();
@@ -714,6 +716,30 @@ export default function App() {
       showToast(`Brewing ${r.name}`, 'success');
     }, 1500);
   }, [recipes, selectedRecipe, sendAction, showToast, lang, resetForBrew]);
+  // Away from home nobody can see the machine: ask about the cup first.
+  const [cupCheck, setCupCheck] = useState(false);
+  const startBrew = useCallback(() => {
+    if (REMOTE) { if (recipes[selectedRecipe]) setCupCheck(true); return; }
+    doStartBrew();
+  }, [doStartBrew, recipes, selectedRecipe]);
+
+  // Remote link: badge state and the reconnecting bar
+  const [remoteLink, setRemoteLink] = useState(() => (REMOTE ? linkState() : null));
+  const [backOnline, setBackOnline] = useState(false);
+  useEffect(() => {
+    if (!REMOTE) return undefined;
+    let t;
+    const off = onLink((st) => {
+      setRemoteLink((prev) => {
+        if (st.link === 'up' && prev && prev.link === 'down' && prev.everUp) { setBackOnline(true); clearTimeout(t); t = setTimeout(() => setBackOnline(false), 2000); }
+        return st;
+      });
+    });
+    return () => { off(); clearTimeout(t); };
+  }, []);
+  const remoteLost = REMOTE && remoteLink && remoteLink.link === 'down' && remoteLink.everUp;
+  // after the link comes back, reload what the dashboard fetches itself
+  useEffect(() => { if (REMOTE && remoteLink?.link === 'up') { refreshCaps(); fetch('/api/schedules').then((r) => r.json()).then((d) => Array.isArray(d) && setSchedules(d)).catch(() => {}); } }, [remoteLink?.link]); // eslint-disable-line
 
   // Standby: after 60s without touches while no brew runs; woken by a tap, a brew,
   // a machine fault, or a scheduled brew coming up.
@@ -1137,10 +1163,13 @@ export default function App() {
         onNotify={() => setShowNotify(true)}
         onOpenSettings={() => setShowSettings(true)}
         pushOn={pushOn}
+        remote={REMOTE ? (remoteLost ? 'lost' : 'on') : null}
         onAnalytics={() => { if (!caps.analytics) { setShowPro(true); return; } setEditing(false); setShowTray(false); goPage(page === 'analytics' ? 'home' : 'analytics'); if (page !== 'analytics') loadAnalytics(); }}
         editing={editing}
         onCustomise={() => { setEditing((e) => !e); setShowTray(false); }}
       />
+      {remoteLost && <div className="remote-bar" role="status"><span className="rb-dots"><i /><i /><i /></span>{lang === 'ar' ? 'إعادة الاتصال…' : 'Reconnecting…'}</div>}
+      {REMOTE && !remoteLost && backOnline && <div className="remote-bar back" role="status"><span className="rb-dot" />{lang === 'ar' ? 'عاد الاتصال' : 'Back online'}</div>}
       <Clock lang={lang} className="clock-strip" />
 
       {page === 'analytics' ? (
@@ -1196,7 +1225,7 @@ export default function App() {
       )}
 
       {rateBrew && <RatingSheet lang={lang} brew={rateBrew} onClose={(saved) => { setRateBrew(null); if (saved) loadAnalytics(); }} />}
-      {showSettings && <SettingsSheet lang={lang} fullscreen={fullscreen} onToggleLang={toggleLang} onRestart={restartServer} onOpenAccount={() => setShowAccount(true)} onOpenCloud={() => setShowCloud(true)} onOpenPro={() => setShowPro(true)} pro={caps.pro} onClose={() => setShowSettings(false)} />}
+      {showSettings && <SettingsSheet lang={lang} fullscreen={fullscreen} onToggleLang={toggleLang} onRestart={restartServer} onOpenAccount={() => setShowAccount(true)} onOpenCloud={() => setShowCloud(true)} onOpenPro={() => setShowPro(true)} pro={caps.pro} remoteEmail={REMOTE ? getEmail() : ''} onSignOut={() => askGate('signout')} onClose={() => setShowSettings(false)} />}
       {showCloud && <CloudSheet lang={lang} onClose={() => { setShowCloud(false); refreshCaps(); }} />}
       {showPro && <ProSheet lang={lang} pro={caps.pro} onSignIn={() => { setShowPro(false); setShowCloud(true); }} onClose={() => setShowPro(false)} />}
       {showNotify && <NotifySheet lang={lang} soundOn={soundOn} onToggleSound={toggleSound} pushAvailable={caps.push} onClose={() => { setShowNotify(false); refreshPush(); }} />}
@@ -1244,6 +1273,24 @@ export default function App() {
           weather={addons.weather && weather ? weather : null} verse={addons.verse ? VERSES[verseIndex % VERSES.length] : null}
           nextSchedule={nextSchedule}
           items={standbyItems} onItems={(next) => { setStandbyItems(next); try { localStorage.setItem('nuqta_standby_items', JSON.stringify(next)); } catch {} }} />
+      )}
+
+      {cupCheck && (
+        <div className="cup-sheet-overlay" onClick={() => setCupCheck(false)}>
+          <div className="cup-sheet" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <div className="grab" />
+            <div className="cup-top">
+              <span className="remote-pill"><CloudDots />{lang === 'ar' ? 'عن بُعد' : 'Remote'}</span>
+              <span dir="auto">{recipes[selectedRecipe]?.name}</span>
+            </div>
+            <h3>{lang === 'ar' ? 'هل الكوب في مكانه؟' : 'Is your cup in place?'}</h3>
+            <p>{lang === 'ar' ? 'أنت عن بُعد ولا يمكنك رؤية المكنة. سيبدأ التحضير الآن.' : "You're away and can't see the machine. Brewing starts right now."}</p>
+            <div className="cup-btns">
+              <button className="nb nb-primary" onClick={() => { setCupCheck(false); doStartBrew(); }}>{lang === 'ar' ? 'نعم، ابدأ' : 'Yes, start'}</button>
+              <button className="nb nb-secondary" onClick={() => setCupCheck(false)}>{lang === 'ar' ? 'إلغاء' : 'Cancel'}</button>
+            </div>
+          </div>
+        </div>
       )}
 
       <ToastContainer toasts={toasts} />

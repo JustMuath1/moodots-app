@@ -1913,6 +1913,39 @@ async def _send_ws_snapshot(ws):
     }})
 
 
+# A remote phone has no direct route to this server, so its dashboard sends its
+# data requests through the live link; they are answered by this same server.
+REMOTE_HTTP_BLOCKED = ("/api/hub/", "/api/cloud/login", "/api/push/", "/api/trace")
+_dashboard_port = 8420
+
+
+async def _relay_http(ws, req: dict) -> None:
+    rid = req.get("id")
+    path = str(req.get("path", ""))
+    method = str(req.get("method", "GET")).upper()
+    out = {"type": "__http__", "id": rid, "status": 403, "body": ""}
+    try:
+        if (path.startswith("/api/") and ".." not in path
+                and not path.startswith(REMOTE_HTTP_BLOCKED)
+                and method in ("GET", "POST", "PUT", "DELETE")):
+            body = req.get("body")
+            async with aiohttp.ClientSession() as http:
+                async with http.request(
+                        method, f"http://127.0.0.1:{_dashboard_port}{path}",
+                        data=body.encode() if isinstance(body, str) else None,
+                        headers={"Content-Type": "application/json"} if body else None,
+                        timeout=aiohttp.ClientTimeout(total=20)) as r:
+                    out["status"] = r.status
+                    out["body"] = (await r.text())[:900_000]
+    except Exception as e:
+        out["status"] = 502
+        log.warning("Remote request %s %s failed: %s", method, path, e)
+    try:
+        await ws.send_str(json.dumps(out))
+    except Exception:
+        pass
+
+
 async def _run_ws_session(ws, peer: str = ""):
     """Runs the dashboard protocol over an already-open ws. aiohttp's
     server-side WebSocketResponse (a local tab) and client-side
@@ -1936,6 +1969,10 @@ async def _run_ws_session(ws, peer: str = ""):
 
             if cmd.get("__hub_client_connected__"):
                 await _send_ws_snapshot(ws)
+                continue
+            if "__http__" in cmd:
+                if ws is _hub_agent_ws:   # only the remote link carries these
+                    asyncio.create_task(_relay_http(ws, cmd["__http__"]))
                 continue
 
             action = cmd.get("action")
@@ -2735,6 +2772,8 @@ def alexa_name(name: str) -> str:
 
 def start_fauxmo(server_port: int):
     """Start fauxmo (Alexa sees each device as a smart plug on the Wi-Fi)."""
+    if os.environ.get("NUQTA_NO_ALEXA"):
+        return
     global _alexa_port, _alexa_recipe_names
     _alexa_port = server_port
     u = f"http://localhost:{server_port}"
@@ -2779,7 +2818,7 @@ def start_fauxmo(server_port: int):
     }
 
     import json, tempfile, subprocess, shutil
-    cfg_path = Path(tempfile.gettempdir()) / "xbloom_fauxmo.json"
+    cfg_path = Path(tempfile.gettempdir()) / f"xbloom_fauxmo_{server_port}.json"   # per server, so two copies never stop each other
     cfg_path.write_text(json.dumps(config, indent=2))
     fauxmo_bin = shutil.which("fauxmo")
     if fauxmo_bin:
@@ -2960,6 +2999,8 @@ def main():
     app = web.Application(middlewares=[same_origin_only])
     app.on_startup.append(on_startup)
     app["dashboard_port"] = port
+    global _dashboard_port
+    _dashboard_port = port
     app.on_startup.append(start_name_redirect)
     app.on_cleanup.append(on_cleanup)
     app.router.add_get("/", handle_index)

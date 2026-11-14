@@ -4,12 +4,27 @@ import Clock from './Clock';
 import Logo from './Logo';
 import { THEMES } from '../utils/themes';
 
-export default function Header({ lang, ble, soundOn, onToggleSound, fullscreen, onOpenConnection, onOpenAccount, onRestart, onToggleLang, theme, onOpenThemes, canCustomise, editing, onCustomise, page, onAnalytics, onNotify, pushOn, showAnalytics, analyticsLocked, onOpenSettings }) {
+const REMOTE_TX = {
+  ar: { remote: 'عن بُعد', noSignal: 'بلا إنترنت', machineOn: 'المكنة متصلة', unknown: 'المكنة ؟' },
+  en: { remote: 'Remote', noSignal: 'No signal', machineOn: 'Machine on', unknown: 'Machine ?' },
+};
+const CLOUD = ['..aaa...', '.aaaaaa.', 'aaaaaaaa', 'aaaaaaaa'];
+export function CloudDots() {
+  return (
+    <svg width="24" height="12" viewBox="0 0 24 12" aria-hidden="true">
+      {CLOUD.flatMap((row, y) => [...row].map((ch, x) => (ch === 'a' ? <circle key={`${x}${y}`} cx={x * 3 + 1.5} cy={y * 3 + 1.5} r="1.2" fill="currentColor" /> : null)))}
+    </svg>
+  );
+}
+
+export default function Header({ lang, ble, soundOn, onToggleSound, fullscreen, onOpenConnection, onOpenAccount, onRestart, onToggleLang, theme, onOpenThemes, canCustomise, editing, onCustomise, page, onAnalytics, onNotify, pushOn, showAnalytics, analyticsLocked, onOpenSettings, remote }) {
   const [restarting, setRestarting] = useState(false);
 
   const isOn = ble === 'connected';
   const isScanning = ble === 'scanning' || ble === 'connecting';
-  const connLabel = isOn ? t('connected', lang) : isScanning ? t('scanning', lang) : t('disconnectedTap', lang);
+  const away = remote ? (REMOTE_TX[lang] || REMOTE_TX.en) : null;
+  const lost = remote === 'lost';
+  const connLabel = lost ? away.unknown : isOn ? (away ? away.machineOn : t('connected', lang)) : isScanning ? t('scanning', lang) : t('disconnectedTap', lang);
 
   const handleRestart = async () => {
     setRestarting(true);
@@ -24,8 +39,9 @@ export default function Header({ lang, ble, soundOn, onToggleSound, fullscreen, 
           <Logo className="wordmark-logo" />
           <span className="wordmark-sub">{t('brandFor', lang)} <span dir="ltr">xBloom</span></span>
         </div>
-        <button className={`conn-pill ${isOn ? 'on' : isScanning ? 'scanning' : 'off'}`} onClick={onOpenConnection}>
-          <span className={`conn-dot ${isOn ? 'on' : isScanning ? 'scanning' : 'off'}`} />
+        {away && <span className={`remote-pill${lost ? ' lost' : ''}`}><CloudDots />{lost ? away.noSignal : away.remote}</span>}
+        <button className={`conn-pill ${lost ? 'unknown' : isOn ? 'on' : isScanning ? 'scanning' : 'off'}`} onClick={onOpenConnection}>
+          <span className={`conn-dot ${lost ? 'off' : isOn ? 'on' : isScanning ? 'scanning' : 'off'}`} />
           {connLabel}
         </button>
       </div>
