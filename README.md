@@ -54,7 +54,8 @@ own computer — no account needed.
   **Linux**. macOS is the best‑tested; Windows and Linux are supported but newer.
 - **Python 3.10 or newer** — [python.org/downloads](https://www.python.org/downloads/)
   (on Windows, tick **"Add python.exe to PATH"** during setup).
-- **Node.js 18 or newer** (the LTS version) — [nodejs.org](https://nodejs.org).
+- **Node.js 20.19 or newer** (the LTS version) — [nodejs.org](https://nodejs.org). Nuqta runs on
+  Node 18, but voice control needs 20.19 or newer.
 - Your **xBloom** turned on.
 
 ### 1. Download
@@ -118,6 +119,8 @@ ssh <username>@nuqta.local
 ```
 
 ### 3. Install Nuqta on the Pi
+The current Raspberry Pi OS (13 Trixie) installs a Node new enough for voice control; the older one
+(12 Bookworm) runs Nuqta without voice control.
 ```bash
 sudo apt update && sudo apt install -y git python3-venv nodejs npm bluez lsof
 ```

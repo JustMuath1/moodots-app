@@ -10,6 +10,7 @@ where py >nul 2>&1 && set "PY=py -3"
 if not defined PY where python >nul 2>&1 && set "PY=python"
 if not defined PY goto :nopython
 where npm >nul 2>&1 || goto :nonode
+node -e "process.exit(+process.versions.node.split('.')[0]>=18?0:1)" || goto :oldnode
 
 echo Installing Python packages (into .venv in this folder)...
 %PY% -m venv .venv || goto :failvenv
@@ -23,9 +24,11 @@ call npm run build --silent || goto :failbuild
 popd
 
 echo Setting up voice control...
+node -e "const[a,b]=process.versions.node.split('.').map(Number);process.exit(a>=23||(a===22&&b>=13)||(a===20&&b>=19)?0:1)" || goto :novoice
 pushd matter
 call npm install --silent --no-audit --no-fund || echo Voice control could not be installed - the rest of Nuqta works.
 popd
+:aftervoice
 
 echo.
 echo Nuqta is installed. Next time, start it by double-clicking start-nuqta.bat
@@ -44,6 +47,16 @@ exit /b 1
 echo Node.js is not installed. Get the LTS version from https://nodejs.org, then run this again.
 pause
 exit /b 1
+
+:oldnode
+echo Node.js 18 or newer is needed. Get the LTS version from https://nodejs.org, then run this again.
+pause
+exit /b 1
+
+:novoice
+echo Voice control (Alexa / Apple Home / Google Home) needs Node.js 20.19 or newer. Skipped - the rest of Nuqta works.
+echo Update Node from https://nodejs.org and run this again to add it.
+goto :aftervoice
 
 :failvenv
 echo Could not create the Python environment.
