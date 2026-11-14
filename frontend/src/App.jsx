@@ -316,6 +316,8 @@ export default function App() {
       setCloudStatus(msg.data || { signed_in: false, email: '' });
     } else if (msg.type === 'voice') {
       setVoiceTick((n) => n + 1);
+    } else if (msg.type === 'voice_action') {
+      voiceActionRef.current?.(msg);
     } else if (msg.type === 'voice_confirm') {
       setVoiceAsk(msg.recipe ? { recipe: msg.recipe, source: msg.source } : null);
     } else if (msg.type === 'toast') {
@@ -605,6 +607,55 @@ export default function App() {
     if (waterMode && (!isConnected || isBrewing)) setWaterMode(null);
   }, [waterMode, isConnected, isBrewing]);
   const refillTank = useCallback(() => sendAction('tank_refill'), [sendAction]);
+
+  // A voice command (Alexa, Siri shortcut…) ran on the machine: show it on this screen too.
+  const voiceActionRef = useRef(null);
+  voiceActionRef.current = (msg) => {
+    const L = langRef.current;
+    const who = msg.source === 'shortcut' ? (L === 'ar' ? 'اختصار' : 'Shortcut') : 'Alexa';
+    lastActivityRef.current = Date.now();
+    setStandby(false);
+    if (msg.refused) {
+      const why = { brew_running: L === 'ar' ? 'يوجد تحضير جارٍ' : 'a brew is already running', not_connected: L === 'ar' ? 'المكنة غير متصلة' : 'the machine is not connected' }[msg.refused];
+      showToast(`${who}: ${L === 'ar' ? 'رُفض الأمر' : 'command refused'}${why ? ` — ${why}` : ''}`, 'warning');
+      return;
+    }
+    const S = msg.safety || {};
+    const say = (ar, en) => showToast(`${who}: ${L === 'ar' ? ar : en}`, 'info');
+    switch (msg.action) {
+      case 'brew': {
+        setScale(null); setGrindMode(null); setWaterMode(null);
+        const i = msg.recipe ? recipes.findIndex((r) => r.name === msg.recipe) : -1;
+        if (i >= 0) setSelectedRecipe(i);
+        if (page !== 'home') goPage('home');
+        say(`تحضير ${msg.recipe || ''}`, `brewing ${msg.recipe || ''}`);
+        break;
+      }
+      case 'stop': say('إيقاف التحضير', 'brew stopped'); break;
+      case 'pause': say('إيقاف مؤقت', 'paused'); break;
+      case 'resume': say('متابعة', 'resumed'); break;
+      case 'water':
+        setScale(null); setGrindMode(null);
+        setWaterMode({ temp: S.water_temp || 93, vol: S.water_ml || 200, pat: 'spiral', running: true, heating: true,
+          poured: 0, base: 0, secs: 0, startWater: null });
+        setCelebrate(null); setFrame(0);
+        if (page !== 'home') goPage('home');
+        say(`ماء ساخن ${S.water_ml || 200} مل`, `hot water ${S.water_ml || 200} ml`);
+        break;
+      case 'water_stop': setWaterMode(null); setFrame(0); say('إيقاف الماء', 'water stopped'); break;
+      case 'grind':
+        setScale(null); setWaterMode(null);
+        setGrindMode({ running: true, secs: 0, size: msg.grind?.size || 48, rpm: msg.grind?.rpm || 100 });
+        setCelebrate(null); setFrame(0);
+        if (page !== 'home') goPage('home');
+        say('جارٍ الطحن', 'grinding');
+        break;
+      case 'grind_stop': setGrindMode(null); setFrame(0); say('إيقاف الطحن', 'grinder stopped'); break;
+      case 'tare': say('تم تصفير الميزان', 'scale zeroed'); break;
+      case 'wake': say('إيقاظ المكنة', 'waking the machine'); break;
+      default: break;
+    }
+  };
 
   const scaleRunning = Boolean(scale?.running);
   useEffect(() => {

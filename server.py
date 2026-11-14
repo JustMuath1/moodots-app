@@ -2382,7 +2382,6 @@ async def _voice_action(action: str, want: str | None = None):
         result = await send_confirmed(frame_execute())
         if result:
             return web.json_response({"ok": False, "error": result})
-        await broadcast({"type": "toast", "msg": f"Alexa: brewing {recipe.get('name', '?')}"})
         return web.json_response({"ok": True, "recipe": recipe.get("name")})
 
     elif action == "tare":
@@ -2409,7 +2408,6 @@ async def _voice_action(action: str, want: str | None = None):
         result = result or await send_frame(frame_brewer_start(3.0, w_ml, w_temp, pattern_to_byte(PAT_SPIRAL)))
         alexa_flags["water"] = not result
         if not result:
-            await broadcast({"type": "toast", "msg": f"Alexa: hot water {w_ml} ml"})
             return web.json_response({"ok": True})
     elif action == "water_stop":
         alexa_flags["water"] = False
@@ -2447,7 +2445,6 @@ async def _voice_action(action: str, want: str | None = None):
 
     if result:
         return web.json_response({"ok": False, "error": result})
-    await broadcast({"type": "toast", "msg": f"Alexa: {action}"})
     return web.json_response({"ok": True})
 
 
@@ -2582,7 +2579,15 @@ async def _voice_run(action: str, want: str | None, source: str):
         data = json.loads(resp.text or "{}")
     except Exception as e:
         resp, data = web.json_response({"ok": False, "error": str(e)}), {"ok": False, "error": str(e)}
-    voice_log_add(source, action, recipe_name, bool(data.get("ok")), _voice_reason(data.get("error", "")))
+    ok = bool(data.get("ok"))
+    voice_log_add(source, action, recipe_name, ok, _voice_reason(data.get("error", "")))
+    if ok:
+        sel = alexa_selected_recipe() or {}
+        await broadcast({"type": "voice_action", "action": action, "source": source, "recipe": recipe_name,
+                         "safety": voice_safety(), "grind": {"size": sel.get("grind_size") or 48, "rpm": sel.get("rpm") or 100}})
+    else:
+        await broadcast({"type": "voice_action", "action": action, "source": source, "recipe": recipe_name,
+                         "refused": _voice_reason(data.get("error", ""))})
     await broadcast({"type": "voice"})
     return resp
 
@@ -3123,11 +3128,12 @@ def start_fauxmo(server_port: int):
     _alexa_recipe_names = [r.get("name") for r in _all_recipes()][:10]
     offered = [(e["id"], e["name"]) for e in voice_offered()] if _voice.get("enabled", False) else []
     _voice_device_names = [n for _, n in offered]
-    p = _matter.get("proc")
-    running = bool(p and p.poll() is None)
-    if offered != _matter.get("offered") or (offered and not running):
-        _matter["offered"] = offered
-        matter_restart()
+    with _matter_lock:            # called from more than one thread: only one bridge, ever
+        p = _matter.get("proc")
+        running = bool(p and p.poll() is None)
+        if offered != _matter.get("offered") or (offered and not running):
+            _matter["offered"] = offered
+            matter_restart()
 
 # ---------------------------------------------------------------------------
 # Weather (Open-Meteo, free, no key): current conditions + today's high/low + next hours.
@@ -3256,6 +3262,8 @@ def voice_offered() -> list:
 
 MATTER_DIR = Path(__file__).parent / "matter"
 _matter = {"proc": None, "pairing": {}, "offered": None}
+import threading as _threading
+_matter_lock = _threading.Lock()
 
 
 def _matter_identity() -> dict:
@@ -3290,6 +3298,17 @@ def matter_restart() -> None:
             p.kill()
     _matter["proc"] = None
     _matter["pairing"] = {}
+    # a bridge left by the previous run (a restart replaces this process without
+    # stopping its children) still holds the pairing storage: stop it first
+    pattern = str(MATTER_DIR / "bridge.mjs")
+    subprocess.run(["pkill", "-f", pattern], check=False)
+    for _ in range(10):           # a bridge can take a moment to close; then force it
+        if subprocess.run(["pgrep", "-f", pattern], capture_output=True).returncode != 0:
+            break
+        time.sleep(0.3)
+    else:
+        subprocess.run(["pkill", "-9", "-f", pattern], check=False)
+        time.sleep(0.5)
     if os.environ.get("NUQTA_NO_ALEXA") or not _voice.get("enabled", False) or not matter_available():
         return
     _matter_identity()
