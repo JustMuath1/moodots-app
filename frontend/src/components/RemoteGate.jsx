@@ -101,6 +101,8 @@ export default function RemoteGate({ children }) {
   const [wait, setWait] = useState(0);         // seconds until another code can be requested
   const [info, setInfo] = useState({});        // last status from the server
   const codeRef = useRef(null);
+  const errRef = useRef('');
+  errRef.current = err;
 
   useEffect(() => { if (wait <= 0) return undefined; const t = setTimeout(() => setWait((w) => w - 1), 1000); return () => clearTimeout(t); }, [wait]);
 
@@ -192,10 +194,24 @@ export default function RemoteGate({ children }) {
   // The real input is invisible on top of the cells, so keep its caret at the end:
   // otherwise a tap lands the caret mid-number and Backspace seems to do nothing.
   const caretToEnd = (e) => { const el = e.target; const n = el.value.length; try { if (el.selectionStart !== n || el.selectionEnd !== n) el.setSelectionRange(n, n); } catch {} };
+  // Deleting is handled here rather than left to the invisible input, so it works the
+  // same on every phone keyboard: one digit at a time, or the whole rejected code.
+  const deleteOne = useCallback(() => {
+    if (errRef.current === 'wrong') { setErr(''); setWrongCode(''); setCode(''); return; }
+    if (errRef.current) setErr('');
+    setCode((c) => c.slice(0, -1));
+  }, []);
   const onCodeKey = (e) => {
     if (e.key === 'Enter') { verify(); return; }
-    if ((e.key === 'Backspace' || e.key === 'Delete') && err === 'wrong') { e.preventDefault(); setErr(''); setWrongCode(''); setCode(''); }
+    if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); deleteOne(); }
   };
+  useEffect(() => {
+    const el = codeRef.current;
+    if (!el) return undefined;
+    const h = (ev) => { if (ev.inputType && ev.inputType.startsWith('delete')) { ev.preventDefault(); deleteOne(); } };
+    el.addEventListener('beforeinput', h);
+    return () => el.removeEventListener('beforeinput', h);
+  }, [phase, deleteOne]);
   const clearCode = () => { setErr((x) => (x === 'wrong' ? '' : x)); setWrongCode(''); setCode(''); codeRef.current?.focus(); };
 
   if (phase === 'ready') return children;
