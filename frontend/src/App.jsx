@@ -457,11 +457,6 @@ export default function App() {
   const activeFault = isConnected && isMachineFault(machineState.fault) && machineState.fault !== dismissedFault
     ? machineState.fault : '';
 
-  const skipGrind = useCallback(() => {
-    sendAction('skip_grind');
-    showToast(t('skipGrindStarted', lang), 'info');
-  }, [sendAction, showToast, lang]);
-
   const togglePause = useCallback(() => {
     sendAction(isPaused ? 'resume' : 'pause');
     showToast(t(isPaused ? 'brewResumed' : 'brewPaused', lang), 'info');
@@ -684,6 +679,11 @@ export default function App() {
   const heroNum = waterMode ? waterMode.poured : showPoured ? waterMl : activeNum ? weight : 0;
   // the recipe the machine is running (a schedule may brew a different one than the selected row)
   const activeRecipe = ((isBrewing || isDone) && recipes.find((r) => r.name === machineState.recipe_name)) || recipes[selectedRecipe];
+  const skipGrind = useCallback(() => {
+    sendAction('skip_grind', { recipe: activeRecipe });
+    showToast(t('skipGrindStarted', lang), 'info');
+  }, [sendAction, showToast, lang, activeRecipe]);
+
   const pours = activeRecipe?.pours || [];
   // brew curve: sample the machine's water counter while brewing (seconds since the brew began)
   const curveWater = machineState.water_ml || 0;
@@ -969,7 +969,7 @@ export default function App() {
     if (!scale) { enterScale(); setTimeout(() => setScale((sc) => (sc ? { ...sc, running: true } : sc)), 0); }
     else toggleScaleTimer();
   };
-  const grinderSize = isConnected ? (grinder?.size || recipes[selectedRecipe]?.grind_size || 48) : 0;
+  const grinderSize = isConnected ? (grinder?.size || activeRecipe?.grind_size || 48) : 0;   // the recipe brewing, not just the one picked
 
   /* ── blocks shared by the phone layout and the tablet grid ── */
   const heroBlock = (

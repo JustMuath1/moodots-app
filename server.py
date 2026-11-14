@@ -1139,9 +1139,9 @@ async def _load_and_start(recipe) -> str | None:
     return await send_frame(frame_execute())
 
 
-async def skip_grind_and_brew() -> str | None:
+async def skip_grind_and_brew(fallback: dict | None = None) -> str | None:
     """No beans: stop the stuck run and brew the same recipe with water only (grounds already in)."""
-    recipe = brew_session.get("recipe")
+    recipe = brew_session.get("recipe") or fallback
     if not recipe:
         return "No recipe"
     brew_session["user_stopped"] = True
@@ -1296,6 +1296,13 @@ class MachineState:
 
 # The recipe being brewed and what the user asked for, so a machine "wait" isn't shown as a pause
 brew_session = {"recipe": None, "user_paused": False, "user_stopped": False}
+# The recipe of the brew in progress survives a Nuqta restart, so "brew without grinding" and the
+# screens still know what the machine is brewing.
+LAST_BREW_FILE = Path(__file__).parent / "last_brew.json"
+try:
+    brew_session["recipe"] = json.loads(LAST_BREW_FILE.read_text())
+except Exception:
+    pass
 BREW_CODES = (29, 30, 34, 35, 16, 31)
 
 
@@ -1408,6 +1415,10 @@ def notify_finished(name: str, weight: float, demo: bool = False):
 async def reset_for_brew(recipe: dict):
     """Before a recipe starts: tare the scale and zero every number so the new brew starts clean."""
     brew_session.update(recipe=recipe, user_paused=False, user_stopped=False)
+    try:
+        LAST_BREW_FILE.write_text(json.dumps(recipe))
+    except Exception:
+        pass
     if state.fault in ("Ended early", "No beans"):
         state.fault = ""
     state.weight_g = 0.0
@@ -1905,9 +1916,31 @@ async def select_machine(name: str) -> dict:
     return await handle_connect_action()
 
 
+_TRACE_SENT = {CMD_BYPASS_DOSE, CMD_SET_CUP, CMD_RECIPE_GRIND, CMD_RECIPE_NO_GRIND, CMD_EXECUTE,
+               CMD_BREW_STOP, CMD_BREWER_START, CMD_BREWER_STOP, CMD_QUIT_BREWER, CMD_GRINDER_ENTER, CMD_GRINDER_START}
+
+
+def _trace_sent(frame: bytes) -> None:
+    """Note what Nuqta sends the machine (recipe loads, start/stop) in brew_trace.log."""
+    try:
+        code = frame_code(frame)
+        if code not in _TRACE_SENT:
+            return
+        extra = ""
+        if code in (CMD_RECIPE_GRIND, CMD_RECIPE_NO_GRIND):
+            body = frame[10:-2]
+            n = body[0] if body else 0
+            extra = f" grind={body[1 + n] if len(body) > n + 1 else '?'} ratio={body[2 + n] if len(body) > n + 2 else '?'} pours={body[1:1 + n].hex()}"
+        with open(TRACE_FILE, "a") as fh:
+            fh.write(f"{time.strftime('%H:%M:%S')} SENT code={code:5d} len={len(frame):3d}{extra} raw={frame.hex()}\n")
+    except Exception:
+        pass
+
+
 async def send_frame(frame: bytes) -> str | None:
     if not ble_client or not ble_client.is_connected:
         return "Not connected"
+    _trace_sent(frame)
     try:
         async with ble_lock:
             await ble_client.write_gatt_char(UUID_TX, frame, response=False)
@@ -2133,7 +2166,7 @@ async def _run_ws_session(ws, peer: str = ""):
                 brew_session["user_stopped"] = True
                 result = await send_confirmed(frame_stop())
             elif action == "skip_grind":
-                result = await skip_grind_and_brew()
+                result = await skip_grind_and_brew(cmd.get("recipe"))
             elif action == "load_recipe":
                 recipe = cmd.get("recipe")
                 if recipe:

@@ -47,3 +47,5 @@ voice_log.json
 # Matter bridge: installed packages and the pairing it keeps
 matter/node_modules/
 matter_data/
+
+last_brew.json
