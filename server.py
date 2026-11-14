@@ -11,6 +11,7 @@ Protocol ported from Xbloom-panel (MIT) / xbloom-py (MIT).
 """
 
 import asyncio
+import hashlib
 import base64
 import json
 import logging
@@ -605,7 +606,7 @@ async def cloud_fetch_recipes() -> list[dict]:
             mine.append(s)
     cloud_recipes = mine
     log.info("Cloud: synced %d recipes", len(cloud_recipes))
-    if [r.get("name") for r in _all_recipes()][:10] != _alexa_recipe_names[:10] and shutil_which("fauxmo"):
+    if [r.get("name") for r in _all_recipes()][:10] != _alexa_recipe_names[:10]:
         start_fauxmo(_alexa_port)     # new recipe names: give Alexa a plug for each
     return cloud_recipes
 
@@ -2670,29 +2671,8 @@ _ALEXA_LOG_RE = re.compile(
 
 
 def voice_alexa_seen() -> dict:
-    """When an Alexa speaker last read the devices, checked one, or sent a command,
-    taken from the helper's own log. Lets the Voice page show where a setup stops."""
-    out = {"read": None, "check": None, "command": None, "command_name": "", "command_on": None, "since": None}
-    path = Path(__file__).parent / "alexa.log"
-    try:
-        out["since"] = int(path.stat().st_ctime)
-        with open(path, "rb") as fh:
-            fh.seek(max(0, path.stat().st_size - 300_000))
-            text = fh.read().decode("utf-8", "replace")
-    except Exception:
-        return out
-    for m in _ALEXA_LOG_RE.finditer(text):
-        try:
-            ts = int(time.mktime(time.strptime(m.group(1), "%Y-%m-%d %H:%M:%S")))
-        except ValueError:
-            continue
-        if m.group(2).startswith("setup.xml"):
-            out["read"] = ts
-        elif m.group(3):
-            out["check"] = ts
-        else:
-            out.update(command=ts, command_on=m.group(4) == "on", command_name=m.group(5).strip())
-    return out
+    """When an Alexa speaker last read the devices, checked one, or sent a command."""
+    return dict(_hue_seen)
 
 
 def voice_needs_discover() -> bool:
@@ -2722,7 +2702,7 @@ def voice_payload() -> dict:
     return {
         "pro": pro,
         "enabled": bool(_voice.get("enabled", False)),
-        "helper": bool(shutil_which("fauxmo")),
+        "helper": True,
         "count": len(_voice_device_names) if _voice.get("enabled", False) else 0,
         "devices": [{"key": k, "enabled": voice_device_on(k),
                      "state": "momentary" if k in ("scale", "wake") else ("on" if states.get(k) else "off")}
@@ -3127,85 +3107,15 @@ def alexa_name(name: str) -> str:
 
 
 def start_fauxmo(server_port: int):
-    """Start fauxmo (Alexa sees each device as a smart plug on the Wi-Fi)."""
+    """Refresh what Alexa is offered. Alexa now talks to the Hue bridge built into
+    Nuqta (see hue_handle); this only stops the older Wemo helper if one is left."""
     global _alexa_port, _alexa_recipe_names, _voice_device_names
     _alexa_port = server_port
-    u = f"http://localhost:{server_port}"
-
-    def plug(name, port, on, off, state=None, fake=False):
-        d = {"name": name, "port": port, "method": "POST", "on_cmd": f"{u}{on}", "off_cmd": f"{u}{off}"}
-        if state:
-            d.update(state_cmd=f"{u}/api/alexa-state?dev={state}", state_response_on="BREWING", state_response_off="IDLE")
-        if fake:
-            d.update(use_fake_state=True, initial_state="off")
-        return d
-
-    # one device per function, with a short name that is easy to say
-    base = [
-        ("coffee", plug("Coffee", 12346, "/api/alexa/brew", "/api/alexa/stop", state="brew")),
-        ("pause", plug("Coffee Pause", 12343, "/api/alexa/pause", "/api/alexa/resume", state="pause")),
-        ("water", plug("Hot Water", 12344, "/api/alexa/water", "/api/alexa/water_stop", state="water")),
-        ("grind", plug("Grinder", 12348, "/api/alexa/grind", "/api/alexa/grind_stop", state="grind")),
-        ("scale", plug("Scale", 12347, "/api/alexa/tare", "/api/alexa/tare", fake=True)),
-        ("wake", plug("Coffee Machine", 12349, "/api/alexa/wake", "/api/alexa/wake", fake=True)),
-    ]
-    devices = [d for key, d in base if voice_device_on(key)]
-    # one plug per recipe ("Alexa, turn on Iced V60"), up to 10
-    names, seen = [], set()
-    if pro_active():
-        # the recipes, order and spoken names chosen on the Voice page
-        for i, sl in enumerate(voice_recipe_slots()):
-            if sl["on"] and not sl["problem"] and voice_device_on("coffee"):
-                names.append(sl["name"])
-                devices.append(plug(sl["voice"], 12350 + i,
-                                    f"/api/alexa/brew?recipe={urllib.parse.quote(sl['name'])}", "/api/alexa/stop",
-                                    state="brew"))
+    import subprocess
+    subprocess.run(["pkill", "-f", "voice_helper.py -c"], check=False)
+    subprocess.run(["pkill", "-f", "fauxmo -c .*xbloom_fauxmo"], check=False)
     _alexa_recipe_names = [r.get("name") for r in _all_recipes()][:10]
-    _voice_device_names = [d["name"] for d in devices]
-
-    config = {
-        "FAUXMO": {"ip_address": get_local_ip()},
-        "PLUGINS": {"SimpleHTTPPlugin": {"path": "fauxmo.plugins.simplehttpplugin", "DEVICES": devices}},
-    }
-
-    import json, tempfile, subprocess, shutil
-    cfg_path = Path(tempfile.gettempdir()) / f"xbloom_fauxmo_{server_port}.json"   # per server, so two copies never stop each other
-    cfg_path.write_text(json.dumps(config, indent=2))
-    if os.environ.get("NUQTA_NO_ALEXA"):     # tests: work everything out, start nothing
-        if not _voice.get("enabled", False):
-            _voice_device_names = []
-        return
-    fauxmo_bin = shutil.which("fauxmo")
-    helper = Path(__file__).parent / "voice_helper.py"
-
-    def stop_helpers():
-        subprocess.run(["pkill", "-f", f"voice_helper.py -c {cfg_path}"], check=False)
-        subprocess.run(["pkill", "-f", f"fauxmo -c {cfg_path}"], check=False)
-
-    if fauxmo_bin and not _voice.get("enabled", False):
-        stop_helpers()
-        _voice_device_names = []
-        log.info("Voice control is off — Alexa helper stopped")
-        return
-    if fauxmo_bin:
-        stop_helpers()
-        # one fauxmo only: stop any left over from an earlier run (it would hold the Alexa ports)
-        subprocess.run(["pkill", "-f", f"fauxmo -c {cfg_path}"], check=False)
-        if server_port == 8420:   # a helper left by an older Nuqta used this name and still holds the ports
-            subprocess.run(["pkill", "-f", "fauxmo -c .*xbloom_fauxmo.json"], check=False)
-        time.sleep(0.5)
-        alexa_log = open(Path(__file__).parent / "alexa.log", "w")   # fresh each start; read by voice_alexa_seen()
-        proc = subprocess.Popen(
-            [sys.executable, str(helper), "-c", str(cfg_path), "-vv"]
-            + (["--salt", str(_voice["gen"])] if _voice.get("gen") else []),
-            stdout=alexa_log, stderr=alexa_log,
-        )
-        import atexit
-        atexit.register(lambda: proc.poll() is None and proc.terminate())
-        log.info("Fauxmo started — Alexa devices: %s", ", ".join(d["name"] for d in devices))
-    else:
-        log.error("fauxmo not found — install with: pip install fauxmo")
-
+    _voice_device_names = [v["name"] for v in hue_lights().values()]
 
 # ---------------------------------------------------------------------------
 # Weather (Open-Meteo, free, no key): current conditions + today's high/low + next hours.
@@ -3282,6 +3192,192 @@ async def handle_weather(request):
     return web.json_response(weather_now or {})
 
 
+
+# ---------------------------------------------------------------------------
+# Alexa: Nuqta answers as a Philips Hue bridge on the home network. Echo speakers
+# find Hue bridges by themselves and switch their "lights" locally, with no skill
+# and no account. Only the devices chosen on the Voice page are offered.
+# (This replaces the older Wemo-plug emulation, which new Echos no longer control.)
+# ---------------------------------------------------------------------------
+HUE_USER = "nuqta"
+HUE_FIXED_IDS = {"coffee": 1, "pause": 2, "water": 3, "grind": 4, "scale": 5, "wake": 6}
+HUE_NAMES = {"coffee": "Coffee", "pause": "Coffee Pause", "water": "Hot Water",
+             "grind": "Grinder", "scale": "Scale", "wake": "Coffee Machine"}
+HUE_ON = {"coffee": "brew", "pause": "pause", "water": "water", "grind": "grind", "scale": "tare", "wake": "wake"}
+HUE_OFF = {"coffee": "stop", "pause": "resume", "water": "water_stop", "grind": "grind_stop"}
+_hue_seen = {"read": None, "check": None, "command": None, "command_name": "", "command_on": None, "since": int(time.time())}
+_hue_ssdp = None
+
+
+def _mac_hex() -> str:
+    import uuid as _uuid
+    return f"{_uuid.getnode():012x}".upper()
+
+
+def hue_bridge_id() -> str:
+    m = _mac_hex()
+    return f"{m[:6]}FFFE{m[6:]}"
+
+
+def hue_lights() -> dict:
+    """{light id: {"key", "name", "recipe"}} for everything offered to Alexa."""
+    out = {}
+    if not _voice.get("enabled", False):
+        return out
+    for key, lid in HUE_FIXED_IDS.items():
+        if voice_device_on(key):
+            out[str(lid)] = {"key": key, "name": HUE_NAMES[key], "recipe": None}
+    if pro_active() and voice_device_on("coffee"):
+        for sl in voice_recipe_slots():
+            if sl["on"] and not sl["problem"]:
+                # stable id per recipe, so Alexa keeps the same device when the order changes
+                lid = 100 + int(hashlib.sha1(sl["name"].encode()).hexdigest()[:6], 16) % 900
+                while str(lid) in out:
+                    lid += 1
+                out[str(lid)] = {"key": "coffee", "name": sl["voice"], "recipe": sl["name"]}
+    return out
+
+
+def _hue_is_on(entry) -> bool:
+    k = entry["key"]
+    if k == "coffee":
+        return state.brew_active and (entry["recipe"] is None or state.recipe_name == entry["recipe"])
+    if k == "pause":
+        return state.brew_active and state.activity == "Paused"
+    if k == "water":
+        return alexa_flags["water"] and module_mode == "brewer"
+    if k == "grind":
+        return alexa_flags["grind"] and module_mode == "grinder"
+    return False
+
+
+def _hue_light_json(lid: str, entry) -> dict:
+    m = _mac_hex()
+    mac = ":".join(m[i:i + 2] for i in range(0, 12, 2))
+    return {
+        "state": {"on": _hue_is_on(entry), "bri": 254, "alert": "none", "mode": "homeautomation", "reachable": True},
+        "type": "On/Off plug-in unit", "name": entry["name"], "modelid": "Plug 01",
+        "manufacturername": "Philips", "productname": "Nuqta", "uniqueid": f"{mac}:00:11-{int(lid):02x}",
+        "swversion": "nuqta-1.0",
+    }
+
+
+def _hue_description(ip: str) -> str:
+    m = _mac_hex().lower()
+    return f"""<?xml version="1.0" ?><root xmlns="urn:schemas-upnp-org:device-1-0"><specVersion><major>1</major><minor>0</minor></specVersion><URLBase>http://{ip}:80/</URLBase><device><deviceType>urn:schemas-upnp-org:device:Basic:1</deviceType><friendlyName>Nuqta ({ip})</friendlyName><manufacturer>Royal Philips Electronics</manufacturer><manufacturerURL>http://www.philips.com</manufacturerURL><modelDescription>Philips hue Personal Wireless Lighting</modelDescription><modelName>Philips hue bridge 2012</modelName><modelNumber>929000226503</modelNumber><modelURL>http://www.meethue.com</modelURL><serialNumber>{m}</serialNumber><UDN>uuid:2f402f80-da50-11e1-9b23-{m}</UDN><presentationURL>index.html</presentationURL></device></root>"""
+
+
+async def hue_handle(request):
+    """Hue bridge API (v1) — the part Echo speakers use."""
+    path = request.path.rstrip("/")
+    ip = get_local_ip()
+    if path == "/description.xml":
+        _hue_seen["read"] = int(time.time())
+        return web.Response(text=_hue_description(ip), content_type="text/xml")
+    if path == "/api" and request.method == "POST":
+        return web.json_response([{"success": {"username": HUE_USER}}])
+    parts = path.split("/")          # ["", "api", user, "lights", id, "state"]
+    if len(parts) < 3 or parts[1] != "api":
+        return None
+    lights = hue_lights()
+    if len(parts) == 3:
+        _hue_seen["read"] = int(time.time())
+        return web.json_response({"lights": {k: _hue_light_json(k, v) for k, v in lights.items()},
+                                  "config": {"name": "Nuqta", "bridgeid": hue_bridge_id(), "modelid": "BSB002",
+                                             "mac": ":".join(_mac_hex()[i:i + 2] for i in range(0, 12, 2)).lower(),
+                                             "apiversion": "1.17.0", "swversion": "1709131301"}})
+    if parts[3] != "lights":
+        return web.json_response({})
+    if len(parts) == 4:
+        _hue_seen["read"] = int(time.time())
+        return web.json_response({k: _hue_light_json(k, v) for k, v in lights.items()})
+    lid = parts[4]
+    entry = lights.get(lid)
+    if entry is None:
+        return web.json_response([{"error": {"type": 3, "address": f"/lights/{lid}", "description": "resource not available"}}])
+    if len(parts) == 5:
+        _hue_seen["check"] = int(time.time())
+        return web.json_response(_hue_light_json(lid, entry))
+    if parts[5] == "state" and request.method == "PUT":
+        try:
+            body = json.loads(await request.text() or "{}")
+        except Exception:
+            body = {}
+        on = bool(body.get("on", True))
+        _hue_seen.update(command=int(time.time()), command_name=entry["name"], command_on=on)
+        action = (HUE_ON if on else HUE_OFF).get(entry["key"])
+        if action:
+            # answer Alexa at once; the machine takes a few seconds to load a recipe
+            asyncio.create_task(_hue_run(action, entry["recipe"]))
+        result = [{"success": {f"/lights/{lid}/state/on": on}}]
+        if "bri" in body:
+            result.append({"success": {f"/lights/{lid}/state/bri": body["bri"]}})
+        return web.json_response(result)
+    return web.json_response([])
+
+
+async def _hue_run(action: str, recipe: str | None):
+    class _Req:            # _voice_entry reads the recipe from the query string
+        def __init__(self, recipe):
+            self.query = {"recipe": recipe} if recipe else {}
+    try:
+        await _voice_entry(_Req(recipe), action, "alexa")
+    except Exception as e:
+        log.warning("Alexa command %s failed: %s", action, e)
+
+
+class _HueSSDP(asyncio.DatagramProtocol):
+    """Answers Echo speakers searching the network for Hue bridges."""
+
+    def connection_made(self, transport):
+        self.transport = transport
+
+    def datagram_received(self, data, addr):
+        try:
+            text = data.decode("utf-8", "replace")
+        except Exception:
+            return
+        if not text.startswith("M-SEARCH") or not _voice.get("enabled", False):
+            return
+        st = re.search(r"(?im)^ST:\s*(\S+)", text)
+        st = st.group(1) if st else ""
+        if st not in ("ssdp:all", "upnp:rootdevice", "urn:schemas-upnp-org:device:basic:1", "urn:schemas-upnp-org:device:Basic:1"):
+            return
+        ip, m = get_local_ip(), _mac_hex().lower()
+        reply = ("HTTP/1.1 200 OK\r\nEXT:\r\nCACHE-CONTROL: max-age=100\r\n"
+                 f"LOCATION: http://{ip}:80/description.xml\r\n"
+                 "SERVER: FreeRTOS/7.4.2, UPnP/1.0, IpBridge/1.17.0\r\n"
+                 f"hue-bridgeid: {hue_bridge_id()}\r\n"
+                 "ST: urn:schemas-upnp-org:device:basic:1\r\n"
+                 f"USN: uuid:2f402f80-da50-11e1-9b23-{m}::upnp:rootdevice\r\n\r\n")
+        try:
+            self.transport.sendto(reply.encode(), addr)
+        except Exception:
+            pass
+
+
+async def start_hue_ssdp():
+    global _hue_ssdp
+    if _hue_ssdp is not None or os.environ.get("NUQTA_NO_ALEXA"):
+        return
+    import socket, struct
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    if hasattr(socket, "SO_REUSEPORT"):
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    try:
+        sock.bind(("", 1900))
+        sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP,
+                        struct.pack("4s4s", socket.inet_aton("239.255.255.250"), socket.inet_aton(get_local_ip())))
+    except OSError as e:
+        log.warning("Alexa discovery not available (%s)", e)
+        sock.close()
+        return
+    loop = asyncio.get_running_loop()
+    _hue_ssdp, _ = await loop.create_datagram_endpoint(_HueSSDP, sock=sock)
+    log.info("Alexa: answering as a Hue bridge on http://%s:80", get_local_ip())
+
+
 async def start_name_redirect(app):
     """Port 80 answers http://<this Mac's IP> (no port to type) by sending the browser to the dashboard."""
     port = app["dashboard_port"]
@@ -3289,6 +3385,9 @@ async def start_name_redirect(app):
         return
 
     async def redirect(request):
+        resp = await hue_handle(request)          # Alexa (Hue API) lives on port 80
+        if resp is not None:
+            return resp
         host = (request.host or get_local_ip()).split(":")[0]
         raise web.HTTPFound(f"http://{host}:{port}{request.path_qs}")
 
@@ -3300,6 +3399,7 @@ async def start_name_redirect(app):
         await web.TCPSite(runner, "0.0.0.0", 80, reuse_address=True).start()
         app["name_redirect"] = runner
         log.info("Port 80 redirects to the dashboard (http://%s)", get_local_ip())
+        await start_hue_ssdp()
     except OSError as e:
         await runner.cleanup()
         log.warning("Port 80 redirect not available (%s) — use http://%s:%d", e, get_local_ip(), port)
