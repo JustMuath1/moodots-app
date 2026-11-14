@@ -670,6 +670,132 @@ except Exception as _e:
         from datetime import datetime, timezone
         return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
+# ---- Nuqta Pro: brew analytics, every theme and standby scene -----------------
+# Unlocked by an active Nuqta account (Settings → Nuqta Pro → sign in).
+PRO_DIR = Path(__file__).parent / "pro_pack"
+PRO_STATE_FILE = PRO_DIR / "state.json"
+PRO_GRACE_S = 30 * 86400           # stay unlocked offline for 30 days after the last good check
+PRO_CHECK_EVERY_S = 6 * 3600
+# A full owner checkout keeps the Pro files next to server.py: always Pro there.
+PRO_OWNER_BUILD = HAS_ANALYTICS and (Path(__file__).parent / "analytics_db.py").exists()
+_pro = {"active": PRO_OWNER_BUILD, "checked": 0.0}
+
+
+def _pro_state_read() -> dict:
+    try:
+        return json.loads(PRO_STATE_FILE.read_text())
+    except Exception:
+        return {}
+
+
+def _pro_state_write(**kw) -> None:
+    try:
+        PRO_DIR.mkdir(exist_ok=True)
+        st = _pro_state_read()
+        st.update(kw)
+        PRO_STATE_FILE.write_text(json.dumps(st))
+    except Exception as e:
+        log.warning("Couldn't save Pro state: %s", e)
+
+
+def _load_pro_pack(reload: bool = False) -> bool:
+    """Import the downloaded analytics modules (or reload them after an update)."""
+    global brewlog, HAS_ANALYTICS
+    if PRO_OWNER_BUILD:
+        return True
+    if not (PRO_DIR / "analytics_db.py").exists():
+        return False
+    try:
+        import importlib
+        if str(PRO_DIR) not in sys.path:
+            sys.path.append(str(PRO_DIR))
+        importlib.invalidate_caches()
+        import analytics_db
+        if reload:
+            importlib.reload(analytics_db)
+            if "analytics" in sys.modules:
+                importlib.reload(sys.modules["analytics"])
+        brewlog = analytics_db.BrewLog(Path(__file__).parent / "nuqta.db")
+        HAS_ANALYTICS = True
+        return True
+    except Exception as e:
+        log.warning("Couldn't load Pro analytics: %s", e)
+        return False
+
+
+async def _sync_pro_pack() -> None:
+    """Download the analytics modules from the hub when they're new or changed."""
+    hub = hub_client.hub
+    headers = {"Authorization": f"Bearer {hub.agent_token}"}
+    async with hub_client.session() as http:
+        async with http.get(f"{hub.hub_url}/pro/pack/version", headers=headers,
+                            timeout=aiohttp.ClientTimeout(total=10)) as r:
+            if r.status != 200:
+                return
+            version = (await r.json()).get("version")
+        if version and version == _pro_state_read().get("version") and HAS_ANALYTICS:
+            return
+        async with http.get(f"{hub.hub_url}/pro/pack", headers=headers,
+                            timeout=aiohttp.ClientTimeout(total=30)) as r:
+            if r.status != 200:
+                return
+            pack = await r.json()
+    files = pack.get("files") or {}
+    allowed = {"analytics.py", "analytics_db.py"}
+    PRO_DIR.mkdir(exist_ok=True)
+    for name, text in files.items():
+        if name in allowed:
+            (PRO_DIR / name).write_text(text, encoding="utf-8")
+    updated = HAS_ANALYTICS
+    if _load_pro_pack(reload=updated):
+        _pro_state_write(version=pack.get("version"))
+        _analytics_cache.clear()
+        log.info("Nuqta Pro analytics %s (%s)", "updated" if updated else "installed", pack.get("version"))
+
+
+async def refresh_pro(force: bool = False) -> bool:
+    """Ask the hub whether this account has Pro; fetch analytics if it does."""
+    if PRO_OWNER_BUILD:
+        return True
+    hub = hub_client.hub
+    if not hub.configured:
+        _pro["active"] = False
+        return False
+    status = await hub.account_status(force=force)
+    now = time.time()
+    if status.get("error") == "unreachable":
+        # offline: keep what we knew, for a while
+        last_ok = _pro_state_read().get("active_at", 0)
+        _pro["active"] = now - last_ok < PRO_GRACE_S
+    else:
+        _pro["active"] = bool(status.get("active"))
+        if _pro["active"]:
+            _pro_state_write(active_at=now)
+    _pro["checked"] = now
+    if _pro["active"]:
+        try:
+            await _sync_pro_pack()
+        except Exception as e:
+            log.warning("Pro analytics download failed: %s", e)
+    return _pro["active"]
+
+
+async def pro_loop() -> None:
+    _load_pro_pack()  # use what's already downloaded straight away
+    if not PRO_OWNER_BUILD and _pro_state_read().get("active_at") and hub_client.hub.configured:
+        _pro["active"] = time.time() - _pro_state_read()["active_at"] < PRO_GRACE_S
+    while True:
+        try:
+            await refresh_pro(force=True)
+        except Exception as e:
+            log.warning("Pro check failed: %s", e)
+        await asyncio.sleep(PRO_CHECK_EVERY_S)
+
+
+def pro_active() -> bool:
+    return bool(_pro["active"])
+
+
 try:
     from webpush import WebPush
     pusher = WebPush()
@@ -2143,6 +2269,7 @@ async def on_startup(app):
     app["build_watch"] = asyncio.create_task(watch_dashboard_build())
     app["weather"] = asyncio.create_task(watch_weather())
     app["hub_agent"] = asyncio.create_task(cloud_agent_loop())
+    app["pro"] = asyncio.create_task(pro_loop())
     # reconnect to the machine picked last time (after a restart nobody has to tap "connect")
     if machine_chosen and not os.environ.get("NUQTA_NO_BLE"):
         log.info("Reconnecting to %s", preferred_machine)
@@ -2401,6 +2528,8 @@ def on_brew_log_changed():
 
 async def handle_analytics(request):
     """GET /api/analytics?from&to — every analytics widget in one JSON (analytics-spec §2)."""
+    if not pro_active():
+        return web.json_response({"error": "pro_required"}, status=402)
     if not HAS_ANALYTICS:
         return web.json_response({"error": "analytics not available"}, status=404)
     import analytics
@@ -2448,8 +2577,8 @@ async def handle_service_worker(request):
 
 async def handle_capabilities(request):
     """What this build offers, so the dashboard can show only the features that are present."""
-    return web.json_response({"analytics": HAS_ANALYTICS, "push": HAS_PUSH,
-                              "cloud": True, "alexa": True})
+    return web.json_response({"analytics": HAS_ANALYTICS and pro_active(), "pro": pro_active(),
+                              "push": HAS_PUSH, "cloud": True, "alexa": True})
 
 
 # ---- Nuqta Cloud (optional remote access / push via a hub) -----------------
@@ -2484,13 +2613,21 @@ async def handle_hub_verify(request):
     if not hub_url or not email or not code:
         return web.json_response({"ok": False, "error": "missing_fields"}, status=400)
     result = await hub_client.hub.verify_code(hub_url, email, code)
-    if result.get("ok") and _hub_wake is not None:
-        _hub_wake.set()  # connect now, not at the agent loop's next 30 s check
+    if result.get("ok"):
+        if _hub_wake is not None:
+            _hub_wake.set()  # connect now, not at the agent loop's next 30 s check
+        try:
+            result["pro"] = await refresh_pro(force=True)
+        except Exception as e:
+            log.warning("Pro check after sign-in failed: %s", e)
     return web.json_response(result)
 
 
 async def handle_hub_signout(request):
     hub_client.hub.sign_out()
+    if not PRO_OWNER_BUILD:
+        _pro["active"] = False
+        _pro_state_write(active_at=0)
     if _hub_agent_ws is not None and not _hub_agent_ws.closed:
         await _hub_agent_ws.close()  # drop remote access right away
     if _hub_wake is not None:

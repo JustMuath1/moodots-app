@@ -13,7 +13,7 @@ Arabic first · tablet, iPad, phone and desktop · themes · Saudi standby scene
   <a href="#install-with-claude-code-no-technical-steps">Install with Claude Code</a> ·
   <a href="#raspberry-pi--an-alwayson-host-no-mac-needed">Raspberry Pi</a> ·
   <a href="https://hub.nuqtasa.tools/install">دليل التثبيت بالعربية</a> ·
-  <a href="#nuqta-cloud-coming-soon">Nuqta Cloud (soon)</a> ·
+  <a href="#nuqta-pro">Nuqta Pro</a> ·
   <a href="#troubleshooting">Troubleshooting</a>
 </p>
 
@@ -36,7 +36,8 @@ own computer — no account needed.
 - **Modes:** grind only, water only (temperature · amount · pour pattern), and scale only.
 - **Water tank** card that tracks the level and warns when it's low.
 - **Recipes and schedules** — wake up to a fresh cup.
-- **Customisable home** per device, **themes** that recolour everything, **standby** scenes.
+- **Customisable home** per device, **4 themes** that recolour everything, **3 standby** scenes —
+  more with [Nuqta Pro](#nuqta-pro).
 - **Arabic and English**, with Gregorian and Hijri dates.
 - **Alexa (optional):** "Alexa, turn on coffee".
 
@@ -195,17 +196,22 @@ dashboard"*, *"add my xBloom recipes"*, or *"start Nuqta"*. It follows the instr
 - **Fonts:** the UI prefers the licensed **Thmanyah** font and falls back to IBM Plex Sans Arabic.
   To use Thmanyah, put its `.woff2`/`.otf` files in a `fonts/` folder.
 
-## Nuqta Cloud (coming soon)
-The app is complete and free on your home Wi‑Fi. **Nuqta Cloud** — in development — will add what
-needs a server:
-- Open your dashboard **from your phone away from home** — no router setup.
-- **"Your coffee is ready"** alerts on your phone, with sound.
-- **Sync and backup** of your settings and brew history.
-- **Automatic updates**, security fixes included.
+## Nuqta Pro
+The app is complete and free on your home Wi‑Fi. **Nuqta Pro** unlocks the rest:
 
-**Launch price: 49 SAR, paid once, for life** — no monthly subscription. Nothing to pay now:
-**save your spot at [hub.nuqtasa.tools](https://hub.nuqtasa.tools)** and you'll get an email when it
-launches.
+<p align="center"><img src="docs/brand/pro-analytics.png" width="860" alt="Nuqta Pro brew analytics"></p>
+
+- **Brew analytics** — how much and when you brew, top recipes, dose and ratio consistency,
+  ratings, water, cost per cup and beans used.
+- **Every theme** — Saudi, Riyadh, Dammam, Al‑Baha, Ramadan and Neon, on top of the four free ones.
+- **Every standby scene** — Dalla and finjan, Palm, Riyadh, Dammam and Al‑Baha.
+- **Feature updates, automatically** — new Pro features arrive on their own.
+- **Nuqta Cloud** (coming soon, included): open Nuqta from anywhere, "coffee ready" alerts on your
+  phone, and backup.
+
+**49 SAR, paid once, for life** — no subscription. Get it at
+**[hub.nuqtasa.tools](https://hub.nuqtasa.tools)**, then in the app open **Settings → Nuqta Pro** and
+sign in with the same email.
 
 ## Updating
 Double‑click **`nuqta-update.command`** (macOS). It downloads the latest version, updates packages,
@@ -230,7 +236,7 @@ then run the installer again. With Claude Code, just say **"update Nuqta"**.
 
 ## Privacy
 Everything runs on your computer. Nuqta only talks to the internet to sync recipes from your xBloom
-account (if you add it) and, if you sign in to Nuqta Cloud, to `hub.nuqtasa.tools`.
+account (if you add it) and, if you sign in to Nuqta Pro, to `hub.nuqtasa.tools`.
 
 ## License
 MIT — see [LICENSE](LICENSE). Not affiliated with xBloom; "xBloom" is a trademark of its owner.

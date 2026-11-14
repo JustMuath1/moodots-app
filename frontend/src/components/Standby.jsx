@@ -3,6 +3,8 @@ import { t } from '../utils/i18n';
 import Logo from './Logo';
 import { isHot } from '../services/addons';
 import CityScene, { CITY_VARS } from './CityScene';
+import { standbyLocked } from '../utils/pro';
+import { LockMark } from './ProSheet';
 
 const CUP = [
   '...............',
@@ -124,7 +126,7 @@ const SB_TXT = {
   en: { customise: 'Customise standby', customiseShort: 'Customise', show: 'Shown on the standby screen', style: 'Style', done: 'Done', nextBrew: 'Next brew' },
 };
 
-export default function Standby({ lang, mode, onModeChange, onExit, weather, verse, nextSchedule, items = {}, onItems }) {
+export default function Standby({ lang, mode, pro, onModeChange, onExit, weather, verse, nextSchedule, items = {}, onItems }) {
   const [panel, setPanel] = useState(false);
   const L = lang === 'ar' ? 'ar' : 'en';
   const S = SB_TXT[L];
@@ -222,7 +224,7 @@ export default function Standby({ lang, mode, onModeChange, onExit, weather, ver
             <span className="sb-panel-sub">{S.style}</span>
             <div className="sb-sheet-modes">
               {STANDBY_MODES.map((k) => (
-                <button key={k} className={`sb-sheet-mode${mode === k ? ' on' : ''}`} onClick={() => onModeChange(k)} aria-pressed={mode === k}>{t(MODE_KEY[k], lang)}</button>
+                <button key={k} className={`sb-sheet-mode${mode === k ? ' on' : ''}`} onClick={() => onModeChange(k)} aria-pressed={mode === k}>{t(MODE_KEY[k], lang)}{standbyLocked(k, pro) && <LockMark size={11} />}</button>
               ))}
             </div>
             <span className="sb-panel-sub">{S.show}</span>
@@ -251,7 +253,7 @@ export default function Standby({ lang, mode, onModeChange, onExit, weather, ver
               className={`sb-mode${mode === k ? ' on' : ''}`}
               onClick={() => onModeChange(k)}
             >
-              {t(MODE_KEY[k], lang)}
+              {t(MODE_KEY[k], lang)}{standbyLocked(k, pro) && <LockMark size={11} />}
             </button>
           ))}
         </div>}

@@ -5,11 +5,11 @@ import { t } from '../utils/i18n';
 // small screens don't crowd the header. Shown from the gear button; on wide screens those controls
 // stay inline in the header instead.
 const TX = {
-  ar: { cloud: 'Nuqta Cloud', cloudOpen: 'فتح', title: 'الإعدادات', language: 'اللغة', fullscreen: 'ملء الشاشة', fsOn: 'تشغيل', fsOff: 'إيقاف', restart: 'إعادة تشغيل الخادم', restarting: 'جارٍ…', account: 'حساب xBloom', accountOpen: 'فتح', close: 'إغلاق' },
-  en: { cloud: 'Nuqta Cloud', cloudOpen: 'Open', title: 'Settings', language: 'Language', fullscreen: 'Fullscreen', fsOn: 'On', fsOff: 'Off', restart: 'Restart server', restarting: 'Restarting…', account: 'xBloom account', accountOpen: 'Open', close: 'Close' },
+  ar: { pro: 'نقطة برو', proOn: 'مفعّلة', proOff: 'التحليلات وكل الثيمات والمشاهد', proGet: 'احصل عليها', proAccount: 'الحساب', cloud: 'Nuqta Cloud', cloudOpen: 'فتح', title: 'الإعدادات', language: 'اللغة', fullscreen: 'ملء الشاشة', fsOn: 'تشغيل', fsOff: 'إيقاف', restart: 'إعادة تشغيل الخادم', restarting: 'جارٍ…', account: 'حساب xBloom', accountOpen: 'فتح', close: 'إغلاق' },
+  en: { pro: 'Nuqta Pro', proOn: 'Active', proOff: 'Analytics, every theme and scene', proGet: 'Get Pro', proAccount: 'Account', cloud: 'Nuqta Cloud', cloudOpen: 'Open', title: 'Settings', language: 'Language', fullscreen: 'Fullscreen', fsOn: 'On', fsOff: 'Off', restart: 'Restart server', restarting: 'Restarting…', account: 'xBloom account', accountOpen: 'Open', close: 'Close' },
 };
 
-export default function SettingsSheet({ lang, fullscreen, onToggleLang, onRestart, onOpenAccount, onOpenCloud, onClose }) {
+export default function SettingsSheet({ lang, fullscreen, onToggleLang, onRestart, onOpenAccount, onOpenCloud, onOpenPro, pro, onClose }) {
   const T = TX[lang] || TX.en;
   const [restarting, setRestarting] = useState(false);
   const restart = async () => { setRestarting(true); await onRestart(); setTimeout(() => setRestarting(false), 3000); };
@@ -41,8 +41,8 @@ export default function SettingsSheet({ lang, fullscreen, onToggleLang, onRestar
           <>
             <div className="alert-sep" />
             <div className="alert-row">
-              <div className="alert-text"><b>{T.cloud}</b></div>
-              <button className="nb nb-secondary nb-sm" onClick={() => { onClose(); onOpenCloud(); }}>{T.cloudOpen}</button>
+              <div className="alert-text"><b>{T.pro} <span className="pro-badge sm">PRO</span></b><span>{pro ? T.proOn : T.proOff}</span></div>
+              <button className={`nb ${pro ? 'nb-secondary' : 'nb-primary'} nb-sm`} onClick={() => { onClose(); (pro || !onOpenPro ? onOpenCloud : onOpenPro)(); }}>{pro ? T.proAccount : T.proGet}</button>
             </div>
           </>
         )}

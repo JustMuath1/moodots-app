@@ -8,14 +8,14 @@ const HUB_URL = 'https://hub.nuqtasa.tools';
 
 const TX = {
   ar: {
-    title: 'Nuqta Cloud', intro: 'Nuqta Cloud قيد التطوير: الوصول لنقطة من أي مكان وتنبيهات القهوة على جوالك. احجز مكانك في hub.nuqtasa.tools — وإذا لديك حساب مفعّل فسجّل الدخول هنا.',
+    title: 'حساب نقطة برو', intro: 'سجّل الدخول بالبريد الذي اشتريت به نقطة برو، وتنفتح التحليلات وكل الثيمات والمشاهد على هذا الجهاز.',
     email: 'البريد الإلكتروني', send: 'أرسل الرمز', sending: 'جارٍ الإرسال…',
     codeSent: 'أرسلنا رمزاً من ٦ أرقام إلى', code: 'الرمز', verify: 'تأكيد', verifying: 'جارٍ التأكيد…',
     back: 'تغيير البريد', close: 'إغلاق', signout: 'تسجيل الخروج',
-    account: 'الحساب', status: 'الاشتراك', link: 'الاتصال',
-    active: 'فعّال', inactive: 'غير مشترك', connected: 'متصل', connecting: 'جارٍ الاتصال…', offline: 'غير متصل',
+    account: 'الحساب', status: 'نقطة برو', link: 'Nuqta Cloud',
+    active: 'مفعّلة', inactive: 'غير مفعّلة', connected: 'متصل', connecting: 'جارٍ الاتصال…', offline: 'غير متصل',
     monthly: 'شهري', yearly: 'سنوي', lifetime: 'مدى الحياة', until: 'حتى',
-    notSubscribed: 'تم ربط الجهاز، لكن لا يوجد اشتراك فعّال على هذا البريد بعد.',
+    notSubscribed: 'تم ربط الجهاز، لكن لا توجد نقطة برو على هذا البريد بعد.',
     errors: {
       invalid_email: 'البريد غير صحيح.', rate_limited: 'انتظر قليلاً ثم أعد المحاولة.',
       invalid_code: 'الرمز غير صحيح أو انتهت صلاحيته.', unreachable: 'تعذّر الوصول إلى Nuqta Cloud. تحقق من الإنترنت.',
@@ -23,14 +23,14 @@ const TX = {
     },
   },
   en: {
-    title: 'Nuqta Cloud', intro: 'Nuqta Cloud is in development: reach Nuqta from anywhere and get coffee alerts on your phone. Save your spot at hub.nuqtasa.tools — if you already have an active account, sign in here.',
+    title: 'Nuqta Pro account', intro: 'Sign in with the email you bought Nuqta Pro with, and analytics, every theme and every standby scene unlock on this device.',
     email: 'Email', send: 'Send code', sending: 'Sending…',
     codeSent: 'We sent a 6-digit code to', code: 'Code', verify: 'Verify', verifying: 'Verifying…',
     back: 'Change email', close: 'Close', signout: 'Sign out',
-    account: 'Account', status: 'Subscription', link: 'Connection',
-    active: 'Active', inactive: 'Not subscribed', connected: 'Connected', connecting: 'Connecting…', offline: 'Offline',
+    account: 'Account', status: 'Nuqta Pro', link: 'Nuqta Cloud',
+    active: 'Active', inactive: 'Not active', connected: 'Connected', connecting: 'Connecting…', offline: 'Offline',
     monthly: 'Monthly', yearly: 'Yearly', lifetime: 'Lifetime', until: 'until',
-    notSubscribed: 'This device is linked, but there’s no active subscription on this email yet.',
+    notSubscribed: 'This device is linked, but there’s no Nuqta Pro on this email yet.',
     errors: {
       invalid_email: 'That email doesn’t look right.', rate_limited: 'Wait a moment, then try again.',
       invalid_code: 'Wrong or expired code.', unreachable: 'Can’t reach Nuqta Cloud. Check the internet.',

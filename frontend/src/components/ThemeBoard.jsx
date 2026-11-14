@@ -1,5 +1,7 @@
 import React, { useEffect } from 'react';
 import { THEMES, THEME_KEYS } from '../utils/themes';
+import { FREE_THEMES, themeLocked } from '../utils/pro';
+import { LockMark } from './ProSheet';
 import Logo, { LogoMark } from './Logo';
 
 // Theme picker laid out like the design's themes board (Themes.dc.html):
@@ -27,6 +29,8 @@ const TXT = {
   },
   ready: { ar: 'متوفرة', en: 'Ready' },
   proposed: { ar: 'مقترحة', en: 'Proposed' },
+  free: { ar: 'مجانية', en: 'Free' },
+  pro: { ar: 'برو', en: 'Pro' },
   active: { ar: 'مفعّلة', en: 'Active' },
   grinder: { ar: 'المطحنة · يطحن الآن', en: 'Grinder · grinding now' },
   brew: { ar: 'تحضير', en: 'Brew' },
@@ -95,14 +99,13 @@ function Preview({ th }) {
   );
 }
 
-export default function ThemeBoard({ lang, theme, onTheme, onClose }) {
+export default function ThemeBoard({ lang, theme, pro, onTheme, onClose }) {
   const L = (k) => TXT[k][lang] || TXT[k].en;
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
-  const readyCount = THEME_KEYS.filter((k) => READY.includes(k)).length;
 
   return (
     <div className="tb-overlay" role="dialog" aria-modal="true" aria-label={L('title')} onClick={onClose}>
@@ -113,8 +116,8 @@ export default function ThemeBoard({ lang, theme, onTheme, onClose }) {
             <p className="tb-intro">{L('intro')}</p>
           </div>
           <div className="tb-head-side">
-            <span className="tb-chip ready">{L('ready')} <span dir="ltr">{readyCount}</span></span>
-            <span className="tb-chip">{L('proposed')} <span dir="ltr">{THEME_KEYS.length - readyCount}</span></span>
+            <span className="tb-chip ready">{L('free')} <span dir="ltr">{FREE_THEMES.length}</span></span>
+            <span className="tb-chip pro">PRO <span dir="ltr">{THEME_KEYS.length - FREE_THEMES.length}</span></span>
             <button className="tb-close" onClick={onClose} aria-label={L('close')}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
             </button>
@@ -122,18 +125,19 @@ export default function ThemeBoard({ lang, theme, onTheme, onClose }) {
         </div>
 
         <div className="tb-grid">
-          {THEME_KEYS.map((k) => {
+          {[...FREE_THEMES, ...THEME_KEYS.filter((x) => !FREE_THEMES.includes(x))].map((k) => {
             const th = THEMES[k];
             const on = theme === k;
             const v = th.vars;
             const name = th.name[lang] || th.name.en;
+            const locked = themeLocked(k, pro);
             return (
-              <button key={k} className={`tb-theme${on ? ' on' : ''}`} onClick={() => onTheme(k)} aria-pressed={on} style={{ '--sel': v.accent }}>
+              <button key={k} className={`tb-theme${on ? ' on' : ''}${locked ? ' locked' : ''}`} onClick={() => onTheme(k)} aria-pressed={on} style={{ '--sel': v.accent }}>
                 <div className="tb-theme-head">
                   <span className="tb-name">{name}</span>
-                  <span className={`tb-chip${on ? ' active' : READY.includes(k) ? ' ready' : ''}`}>
-                    {L(on ? 'active' : READY.includes(k) ? 'ready' : 'proposed')}
-                  </span>
+                  {locked ? <span className="tb-chip pro"><LockMark /> PRO</span> : (
+                    <span className={`tb-chip${on ? ' active' : ''}`}>{L(on ? 'active' : FREE_THEMES.includes(k) ? 'free' : 'pro')}</span>
+                  )}
                 </div>
                 <Preview th={{ vars: v, grinderLabel: L('grinder'), brewLabel: L('brew') }} />
                 <p className="tb-desc">{DESC[k]?.[lang] || DESC[k]?.en}</p>

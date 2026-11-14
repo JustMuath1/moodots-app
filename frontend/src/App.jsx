@@ -30,6 +30,8 @@ import { loadTheme, applyTheme } from './utils/themes';
 import PourTimeline from './components/PourTimeline';
 import StepTracker from './components/StepTracker';
 import ThemeBoard from './components/ThemeBoard';
+import ProSheet from './components/ProSheet';
+import { themeLocked, standbyLocked } from './utils/pro';
 import HomeGrid, { EditBar, AddTray } from './components/HomeGrid';
 import { SPANS, loadLayout, saveLayout, DEFAULT_LAYOUT } from './utils/layout';
 import { loadAddonSettings, saveAddonSettings, VERSES } from './services/addons';
@@ -120,6 +122,7 @@ export default function App() {
   const [showNotify, setShowNotify] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showCloud, setShowCloud] = useState(false);
+  const [showPro, setShowPro] = useState(false);
   const [pushOn, setPushOn] = useState(false);
   const [caps, setCaps] = useState({ analytics: false, push: true, cloud: true, alexa: true }); // { prev, cap } after the tank is put back
   const [rateBrew, setRateBrew] = useState(null); // { id, recipe } after a finished brew
@@ -179,7 +182,9 @@ export default function App() {
   useEffect(() => { const iv = setInterval(() => setClockNow(new Date()), 15000); return () => clearInterval(iv); }, []);
   useEffect(() => { applyTheme(theme); }, [theme]);
   // Saudi, Riyadh and Dammam each bring their own standby scene; other themes go back to the cup
+  const proRef = useRef(undefined);
   const changeTheme = useCallback((k) => {
+    if (themeLocked(k, proRef.current)) { setShowThemes(false); setShowPro(true); return; }
     setTheme(k);
     const scene = THEME_STANDBY[k];
     setStandbyMode((m) => {
@@ -382,7 +387,15 @@ export default function App() {
 
   const sendAction = useCallback((action, extra) => send({ action, ...extra }), [send]);
   const refreshPush = useCallback(() => { pushState().then((s) => setPushOn(Boolean(s.on))).catch(() => {}); }, []);
-  useEffect(() => { fetch('/api/capabilities').then((r) => r.json()).then((c) => c && setCaps(c)).catch(() => {}); }, []);
+  const refreshCaps = useCallback(() => { fetch('/api/capabilities').then((r) => r.json()).then((c) => c && setCaps(c)).catch(() => {}); }, []);
+  proRef.current = caps.pro;
+  // Free app: fall back from a Pro theme or scene (e.g. after signing out)
+  useEffect(() => {
+    if (caps.pro !== false) return;
+    if (themeLocked(theme, false)) { setTheme('copper'); }
+    if (standbyLocked(standbyMode, false)) { setStandbyMode('cup'); try { localStorage.setItem(STANDBY_MODE_KEY, 'cup'); } catch {} }
+  }, [caps.pro, theme, standbyMode]);
+  useEffect(() => { refreshCaps(); const iv = setInterval(refreshCaps, 10 * 60 * 1000); return () => clearInterval(iv); }, [refreshCaps]);
   useEffect(() => { refreshPush(); }, [refreshPush]);
 
   // Analytics: computed on the server; refreshed after each logged brew and every 10 minutes
@@ -741,6 +754,7 @@ export default function App() {
 
   const exitStandby = useCallback(() => { setStandby(false); lastActivityRef.current = Date.now(); }, []);
   const changeStandbyMode = useCallback((m) => {
+    if (standbyLocked(m, proRef.current)) { setStandby(false); lastActivityRef.current = Date.now(); setShowPro(true); return; }
     setStandbyMode(m);
     try { localStorage.setItem(STANDBY_MODE_KEY, m); } catch {}
   }, []);
@@ -1116,13 +1130,14 @@ export default function App() {
         onToggleLang={toggleLang}
         theme={theme}
         onOpenThemes={() => setShowThemes(true)}
-        showAnalytics={caps.analytics}
+        showAnalytics
+        analyticsLocked={!caps.analytics}
         canCustomise={wide && page === 'home'}
         page={page}
         onNotify={() => setShowNotify(true)}
         onOpenSettings={() => setShowSettings(true)}
         pushOn={pushOn}
-        onAnalytics={() => { setEditing(false); setShowTray(false); goPage(page === 'analytics' ? 'home' : 'analytics'); if (page !== 'analytics') loadAnalytics(); }}
+        onAnalytics={() => { if (!caps.analytics) { setShowPro(true); return; } setEditing(false); setShowTray(false); goPage(page === 'analytics' ? 'home' : 'analytics'); if (page !== 'analytics') loadAnalytics(); }}
         editing={editing}
         onCustomise={() => { setEditing((e) => !e); setShowTray(false); }}
       />
@@ -1181,8 +1196,9 @@ export default function App() {
       )}
 
       {rateBrew && <RatingSheet lang={lang} brew={rateBrew} onClose={(saved) => { setRateBrew(null); if (saved) loadAnalytics(); }} />}
-      {showSettings && <SettingsSheet lang={lang} fullscreen={fullscreen} onToggleLang={toggleLang} onRestart={restartServer} onOpenAccount={() => setShowAccount(true)} onOpenCloud={() => setShowCloud(true)} onClose={() => setShowSettings(false)} />}
-      {showCloud && <CloudSheet lang={lang} onClose={() => setShowCloud(false)} />}
+      {showSettings && <SettingsSheet lang={lang} fullscreen={fullscreen} onToggleLang={toggleLang} onRestart={restartServer} onOpenAccount={() => setShowAccount(true)} onOpenCloud={() => setShowCloud(true)} onOpenPro={() => setShowPro(true)} pro={caps.pro} onClose={() => setShowSettings(false)} />}
+      {showCloud && <CloudSheet lang={lang} onClose={() => { setShowCloud(false); refreshCaps(); }} />}
+      {showPro && <ProSheet lang={lang} pro={caps.pro} onSignIn={() => { setShowPro(false); setShowCloud(true); }} onClose={() => setShowPro(false)} />}
       {showNotify && <NotifySheet lang={lang} soundOn={soundOn} onToggleSound={toggleSound} pushAvailable={caps.push} onClose={() => { setShowNotify(false); refreshPush(); }} />}
       {showBeans && <BeanSheet lang={lang} onClose={() => setShowBeans(false)} onSaved={loadAnalytics} />}
       {showAccount && (
@@ -1210,6 +1226,7 @@ export default function App() {
           onAddons={setAddons}
           onClose={() => setShowTray(false)}
           caps={caps}
+          onLocked={() => { setShowTray(false); setShowPro(true); }}
           onAdd={(k) => {
             const opts = SPANS[k];
             setLayout(layout.concat([{ id: `${k}-${Date.now()}`, kind: k, variant: opts.M ? 'M' : Object.keys(opts)[0] }]));
@@ -1219,11 +1236,11 @@ export default function App() {
       )}
 
       {showThemes && (
-        <ThemeBoard lang={lang} theme={theme} onTheme={changeTheme} onClose={() => setShowThemes(false)} />
+        <ThemeBoard lang={lang} theme={theme} pro={caps.pro} onTheme={changeTheme} onClose={() => setShowThemes(false)} />
       )}
 
       {standby && (
-        <Standby lang={lang} mode={standbyMode} onModeChange={changeStandbyMode} onExit={exitStandby}
+        <Standby lang={lang} mode={standbyMode} pro={caps.pro} onModeChange={changeStandbyMode} onExit={exitStandby}
           weather={addons.weather && weather ? weather : null} verse={addons.verse ? VERSES[verseIndex % VERSES.length] : null}
           nextSchedule={nextSchedule}
           items={standbyItems} onItems={(next) => { setStandbyItems(next); try { localStorage.setItem('nuqta_standby_items', JSON.stringify(next)); } catch {} }} />

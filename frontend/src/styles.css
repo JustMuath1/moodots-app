@@ -1909,3 +1909,33 @@ html, body, .app-shell, .hero-card, .side-panel, .strip-card, .pour-timeline, .c
 .cloud-note b { color: var(--text); font-weight: 600; }
 .cloud-err { font-size: 13px; color: var(--stop-fg); }
 .modal input.cloud-code { text-align: center; font-family: 'Doto', monospace; font-weight: 900; font-size: 26px; letter-spacing: .35em; }
+
+/* Nuqta Pro: upgrade sheet and lock marks */
+.pro-sheet { max-width: 480px; width: 100%; display: flex; flex-direction: column; gap: 14px; max-height: calc(100dvh - 32px); overflow-y: auto; }
+.pro-head { display: flex; align-items: center; gap: 10px; }
+.pro-badge { font-family: 'Doto', monospace; font-weight: 900; font-size: 13px; letter-spacing: .12em; color: var(--on-accent); background: var(--accent); border-radius: 6px; padding: 2px 7px; }
+.pro-badge.sm { font-size: 10px; padding: 1px 5px; margin-inline-start: 6px; vertical-align: 2px; }
+.pro-price { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.pro-amount { font-family: 'Doto', monospace; font-weight: 900; font-size: 44px; line-height: 1; color: var(--accent); text-shadow: var(--num-glow); }
+.pro-cur { font-size: 18px; font-weight: 700; color: var(--text); }
+.pro-once { font-size: 14px; color: var(--muted); }
+.pro-active { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 14px; background: var(--ok-bg); color: var(--ok-fg); }
+.pro-active b { color: var(--ok-fg); }
+.pro-active span { font-size: 13.5px; }
+.pro-shot { width: 100%; border-radius: 14px; border: 1px solid var(--line-2); display: block; }
+.pro-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.pro-list li { display: flex; gap: 12px; align-items: flex-start; }
+.pro-list li > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pro-list b { font-size: 15px; color: var(--text); display: flex; align-items: center; gap: 8px; }
+.pro-list span { font-size: 13px; line-height: 1.55; color: var(--muted-2); }
+.pro-ic { flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--accent-bg); color: var(--accent); }
+.pro-soon { font-size: 11px !important; font-weight: 600; color: var(--accent) !important; border: 1px solid var(--accent-line); border-radius: 999px; padding: 0 8px; }
+.pro-swatches { display: flex; gap: 6px; margin-top: 6px; }
+.pro-swatches i { width: 16px; height: 16px; border-radius: 50%; display: block; }
+a.nb { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+.lock-mark { display: inline-block; vertical-align: -1px; margin-inline-start: 4px; opacity: .85; }
+.analytics-btn { position: relative; }
+.pro-dot { position: absolute; top: -5px; inset-inline-end: -6px; font-family: 'Doto', monospace; font-weight: 900; font-size: 8.5px; letter-spacing: .06em; line-height: 1; padding: 2px 3px; border-radius: 4px; background: var(--accent); color: var(--on-accent); }
+.tb-chip.pro { background: var(--accent-bg); color: var(--accent); border-color: var(--accent-line); display: inline-flex; align-items: center; gap: 2px; }
+.tb-theme.locked .tb-desc, .tb-theme.locked .tb-swatches { opacity: .7; }
+.tray-add.locked { color: var(--accent); border-color: var(--accent-line); }

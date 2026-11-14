@@ -1,3 +1,4 @@
+import { LockMark } from './ProSheet';
 import React, { useState } from 'react';
 import Widget from './Widgets';
 import { SPANS, NAMES, ADDONS, ANALYTICS, SIZE_LABELS, KINDS } from '../utils/layout';
@@ -44,7 +45,7 @@ function ResizeCorner() {
   );
 }
 
-export function AddTray({ lang, layout, onAdd, onClose, addons, onAddons, caps = {} }) {
+export function AddTray({ lang, layout, onAdd, onClose, addons, onAddons, caps = {}, onLocked }) {
   const T = TXT[lang] || TXT.en;
   const L = lang === 'ar' ? 'ar' : 'en';
   const label = (k) => Object.keys(SPANS[k]).map((z) => `${SIZE_LABELS[L][z]} ${SPANS[k][z][0]}×${SPANS[k][z][1]}`).join(' · ');
@@ -55,7 +56,7 @@ export function AddTray({ lang, layout, onAdd, onClose, addons, onAddons, caps =
         {[
           [T.groupCore, KINDS.filter((k) => !ADDONS.includes(k) && !ANALYTICS.includes(k))],
           [T.groupAddons, KINDS.filter((k) => ADDONS.includes(k))],
-          ...(caps.analytics === false ? [] : [[T.groupAnalytics, ANALYTICS]]),
+          [T.groupAnalytics, ANALYTICS],
         ].map(([title, kinds]) => (
           <div key={title} className="tray-group">
             <span className="tray-title sm">{title}</span>
@@ -64,12 +65,13 @@ export function AddTray({ lang, layout, onAdd, onClose, addons, onAddons, caps =
                 const on = layout.some((w) => w.kind === k);
                 const ext = ADDONS.includes(k);
                 const an = ANALYTICS.includes(k);
-                const disabled = on || (ext && !addons[k]);
+                const locked = an && !caps.analytics;
+                const disabled = !locked && (on || (ext && !addons[k]));
                 return (
                   <div key={k} className={`tray-card${ext ? ' ext' : ''}${an ? ' an' : ''}`}>
                     <div className="tray-card-head"><span className="tray-name">{NAMES[L][k]}</span><span className={`tray-badge${ext ? ' ext' : ''}${an ? ' an' : ''}`}>{an ? T.analyticsBadge : ext ? T.addon : T.core}</span></div>
                     <span className="tray-sizes">{label(k)}</span>
-                    <button className={`tray-add${on ? ' on' : ''}`} disabled={disabled} onClick={() => onAdd(k)}>{on ? T.onScreen : T.addBtn}</button>
+                    <button className={`tray-add${on ? ' on' : ''}${locked ? ' locked' : ''}`} disabled={disabled} onClick={() => (locked ? onLocked?.() : onAdd(k))}>{locked ? <><LockMark /> PRO</> : on ? T.onScreen : T.addBtn}</button>
                   </div>
                 );
               })}

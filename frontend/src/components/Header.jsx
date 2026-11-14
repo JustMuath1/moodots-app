@@ -4,7 +4,7 @@ import Clock from './Clock';
 import Logo from './Logo';
 import { THEMES } from '../utils/themes';
 
-export default function Header({ lang, ble, soundOn, onToggleSound, fullscreen, onOpenConnection, onOpenAccount, onRestart, onToggleLang, theme, onOpenThemes, canCustomise, editing, onCustomise, page, onAnalytics, onNotify, pushOn, showAnalytics, onOpenSettings }) {
+export default function Header({ lang, ble, soundOn, onToggleSound, fullscreen, onOpenConnection, onOpenAccount, onRestart, onToggleLang, theme, onOpenThemes, canCustomise, editing, onCustomise, page, onAnalytics, onNotify, pushOn, showAnalytics, analyticsLocked, onOpenSettings }) {
   const [restarting, setRestarting] = useState(false);
 
   const isOn = ble === 'connected';
@@ -40,6 +40,7 @@ export default function Header({ lang, ble, soundOn, onToggleSound, fullscreen, 
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
           </svg>
+          {analyticsLocked && <span className="pro-dot" aria-label="Pro">PRO</span>}
         </button>}
         {canCustomise && (
           <button className={`icon-btn customise-btn${editing ? ' on' : ''}`} onClick={onCustomise} title={t('customise', lang)} aria-pressed={editing}>
