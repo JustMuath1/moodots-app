@@ -1972,6 +1972,10 @@ async def _run_ws_session(ws, peer: str = ""):
             if cmd.get("__hub_client_connected__"):
                 await _send_ws_snapshot(ws)
                 continue
+            if "__alexa__" in cmd:
+                if ws is _hub_agent_ws:
+                    asyncio.create_task(alexa_skill_request(ws, cmd["__alexa__"]))
+                continue
             if "__http__" in cmd:
                 if ws is _hub_agent_ws:   # only the remote link carries these
                     asyncio.create_task(_relay_http(ws, cmd["__http__"]))
@@ -3233,23 +3237,72 @@ def hue_bridge_id() -> str:
     return f"{m[:6]}FFFE{m[6:]}"
 
 
-def hue_lights() -> dict:
-    """{light id: {"key", "name", "recipe"}} for everything offered to Alexa."""
-    out = {}
+def voice_offered() -> list:
+    """Everything offered to Alexa (local bridge and the Nuqta skill): the devices
+    and recipes chosen on the Voice page, nothing else."""
+    out = []
     if not _voice.get("enabled", False):
         return out
-    for key, lid in HUE_FIXED_IDS.items():
+    for key in HUE_FIXED_IDS:
         if voice_device_on(key):
-            out[str(lid)] = {"key": key, "name": HUE_NAMES[key], "recipe": None}
+            out.append({"id": key, "name": HUE_NAMES[key], "key": key, "recipe": None})
     if pro_active() and voice_device_on("coffee"):
         for sl in voice_recipe_slots():
             if sl["on"] and not sl["problem"]:
-                # stable id per recipe, so Alexa keeps the same device when the order changes
-                lid = 100 + int(hashlib.sha1(sl["name"].encode()).hexdigest()[:6], 16) % 900
-                while str(lid) in out:
-                    lid += 1
-                out[str(lid)] = {"key": "coffee", "name": sl["voice"], "recipe": sl["name"]}
+                rid = "r" + hashlib.sha1(sl["name"].encode()).hexdigest()[:10]
+                out.append({"id": rid, "name": sl["voice"], "key": "coffee", "recipe": sl["name"]})
     return out
+
+
+def hue_lights() -> dict:
+    """{Hue light id: entry} for the local bridge."""
+    out = {}
+    for e in voice_offered():
+        if e["recipe"] is None:
+            lid = HUE_FIXED_IDS[e["key"]]
+        else:
+            lid = 100 + int(e["id"][1:7], 16) % 900
+            while str(lid) in out:
+                lid += 1
+        out[str(lid)] = e
+    return out
+
+
+async def alexa_skill_request(ws, req: dict) -> None:
+    """A request from the Nuqta Alexa skill, passed on by the hub."""
+    rid, op = req.get("id"), req.get("op")
+    reply = {"id": rid}
+    offered = {e["id"]: e for e in voice_offered()}
+    if op == "devices":
+        reply["devices"] = [{"id": e["id"], "name": e["name"]} for e in offered.values()]
+    elif op in ("set", "state"):
+        e = offered.get(str(req.get("device", "")))
+        if e is None:
+            reply.update(ok=False, error="device_off")
+        elif op == "state":
+            reply.update(ok=True, on=_hue_is_on(e))
+        else:
+            on = bool(req.get("on"))
+            action = (HUE_ON if on else HUE_OFF).get(e["key"])
+            if not action:
+                reply.update(ok=True, on=False)          # "off" on a one-shot device: nothing to do
+            else:
+                _hue_seen.update(command=int(time.time()), command_name=e["name"], command_on=on)
+
+                class _Req:
+                    query = {"recipe": e["recipe"]} if e["recipe"] else {}
+                task = asyncio.create_task(_voice_entry(_Req(), action, "alexa"))
+                try:
+                    resp = await asyncio.wait_for(asyncio.shield(task), 4.5)
+                    data = json.loads(resp.text or "{}")
+                    reply.update(ok=bool(data.get("ok")), error=_voice_reason(data.get("error", "")),
+                                 on=on and e["key"] not in ("scale", "wake"))
+                except asyncio.TimeoutError:
+                    reply.update(ok=True, on=on)          # still loading the recipe; it carries on
+    try:
+        await ws.send_str(json.dumps({"__alexa_reply__": reply}))
+    except Exception:
+        pass
 
 
 def _hue_is_on(entry) -> bool:
