@@ -280,17 +280,20 @@ def encode_recipe_blob(recipe):
 def build_load_frames(recipe):
     frames = []
     frames.append(build_frame(CMD_HANDSHAKE, [185, 1]))
-    frames.append(build_frame(CMD_BYPASS_DOSE, [0, 0, round(recipe.get("dose_g", 15))]))
+    grind_on = recipe.get("grinder_on", True) and recipe.get("grind_size", 0) > 0
+    # The machine grinds whatever dose this frame names; pre-ground coffee is dose 0 ("grind 0 grams").
+    frames.append(build_frame(CMD_BYPASS_DOSE, [0, 0, round(recipe.get("dose_g", 15)) if grind_on else 0]))
 
     cup = recipe.get("cup_type", 3)
     if cup == 2:
         cmax, cmin = 110.0, 90.0
     else:
         cmax, cmin = 200.0, 80.0
+    if not grind_on:
+        cmin = 0.0          # pre-ground: no cup-weight check, as the vendor app does
     frames.append(build_frame(CMD_SET_CUP, [float_bits(cmax), float_bits(cmin)]))
 
     blob = encode_recipe_blob(recipe)
-    grind_on = recipe.get("grinder_on", True) and recipe.get("grind_size", 0) > 0
     cmd = CMD_RECIPE_GRIND if grind_on else CMD_RECIPE_NO_GRIND
     frames.append(build_frame(cmd, raw=blob))
     return frames

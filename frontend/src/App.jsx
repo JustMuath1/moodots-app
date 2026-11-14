@@ -1254,7 +1254,7 @@ export default function App() {
       ) : wide ? (
         <div className="app-content wide">
           {activeFault && (
-            <FaultBanner fault={activeFault} lang={lang} short={shortBrew} onSkipGrind={machineState.brew_active ? skipGrind : null} onDismiss={() => setDismissedFault(activeFault)} />
+            <FaultBanner fault={activeFault} lang={lang} short={shortBrew} onDismiss={() => setDismissedFault(activeFault)} />
           )}
           {editing && <EditBar lang={lang} onAdd={() => setShowTray(true)} onReset={() => setLayout(DEFAULT_LAYOUT.map((w) => ({ ...w })))} onDone={() => { setEditing(false); setShowTray(false); }} />}
           <HomeGrid lang={lang} layout={layout} setLayout={setLayout} edit={editing} ctx={ctx} addons={addons} caps={caps} />
@@ -1264,7 +1264,7 @@ export default function App() {
           {/* ── Main column ── */}
           <div className="main-col">
             {activeFault && (
-              <FaultBanner fault={activeFault} lang={lang} short={shortBrew} onSkipGrind={machineState.brew_active ? skipGrind : null} onDismiss={() => setDismissedFault(activeFault)} />
+              <FaultBanner fault={activeFault} lang={lang} short={shortBrew} onDismiss={() => setDismissedFault(activeFault)} />
             )}
             {heroBlock}
             {timelineBlock}
