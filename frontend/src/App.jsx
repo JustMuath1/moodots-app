@@ -1295,7 +1295,7 @@ export default function App() {
       {showSettings && <SettingsSheet lang={lang} fullscreen={fullscreen} onToggleLang={toggleLang} onRestart={restartServer} onOpenAccount={() => setShowAccount(true)} onOpenCloud={() => setShowCloud(true)} onOpenPro={() => setShowPro(true)} pro={caps.pro} onOpenVoice={() => goPage('voice')} remoteEmail={REMOTE ? getEmail() : ''} onSignOut={() => askGate('signout')} onClose={() => setShowSettings(false)} />}
       {showCloud && <CloudSheet lang={lang} onClose={() => { setShowCloud(false); refreshCaps(); }} />}
       {showPro && <ProSheet lang={lang} pro={caps.pro} onSignIn={() => { setShowPro(false); setShowCloud(true); }} onClose={() => setShowPro(false)} />}
-      {showNotify && <NotifySheet lang={lang} soundOn={soundOn} onToggleSound={toggleSound} pushAvailable={caps.push} onClose={() => { setShowNotify(false); refreshPush(); }} />}
+      {showNotify && <NotifySheet lang={lang} soundOn={soundOn} onToggleSound={toggleSound} pushAvailable={caps.push} pro={caps.pro} onGetPro={() => { setShowNotify(false); setShowPro(true); }} onClose={() => { setShowNotify(false); refreshPush(); }} />}
       {showBeans && <BeanSheet lang={lang} onClose={() => setShowBeans(false)} onSaved={loadAnalytics} />}
       {showAccount && (
         <CloudAccount

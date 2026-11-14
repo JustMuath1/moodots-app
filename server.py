@@ -1321,7 +1321,7 @@ def notify_finished(name: str, weight: float, demo: bool = False):
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except Exception as e:
             log.warning("Mac notification failed: %s", e)
-    if pusher.enabled and pusher.count() and not demo:
+    if pusher.enabled and pusher.count() and not demo and pro_active():
         title = "قهوتك جاهزة · Coffee ready"
         body = f"{name} · {round(weight)} g" if name else f"{round(weight)} g"
         import threading
@@ -3027,6 +3027,8 @@ async def handle_push_key(request):
 
 
 async def handle_push_subscribe(request):
+    if not pro_active():                      # device notifications are part of Nuqta Pro
+        return web.json_response({"ok": False, "error": "pro_required"}, status=402)
     sub = await request.json()
     n = pusher.add(sub)
     return web.json_response({"ok": True, "count": n})
@@ -3039,6 +3041,8 @@ async def handle_push_unsubscribe(request):
 
 
 async def handle_push_test(request):
+    if not pro_active():
+        return web.json_response({"ok": False, "error": "pro_required"}, status=402)
     if not pusher.enabled or not pusher.count():
         return web.json_response({"ok": False, "error": "no subscriptions"}, status=400)
     import asyncio as _a

@@ -9,6 +9,7 @@ const TX = {
     on: 'تفعيل الإشعارات', off: 'إيقاف الإشعارات', test: 'إرسال إشعار تجريبي', close: 'إغلاق', sent: 'أُرسل ✓', enabled: 'الإشعارات مفعّلة على هذا الجهاز',
     install: 'على الآيفون/الآيباد: افتح الرابط في سفاري ← زر المشاركة ← «أضف إلى الشاشة الرئيسية»، ثم افتح نقطة من الأيقونة وفعّل الإشعارات من هنا.',
     unsupported: 'هذا المتصفح لا يدعم الإشعارات، أو الصفحة ليست آمنة. افتحه عبر https.',
+    proOnly: 'إشعارات الجهاز ضمن نقطة برو.', getPro: 'احصل على برو',
     serverOff: 'الإشعارات غير مهيأة على الخادم بعد.', denied: 'رُفض الإذن. فعّله من إعدادات المتصفح ثم أعد المحاولة.',
   },
   en: {
@@ -16,11 +17,12 @@ const TX = {
     on: 'Turn on notifications', off: 'Turn off', test: 'Send a test', close: 'Close', sent: 'Sent ✓', enabled: 'Notifications are on for this device',
     install: 'On iPhone/iPad: open the link in Safari → Share → Add to Home Screen, then open Nuqta from that icon and turn notifications on here.',
     unsupported: 'This browser can’t do notifications, or the page isn’t secure. Open the site over https.',
+    proOnly: 'Device notifications are part of Nuqta Pro.', getPro: 'Get Pro',
     serverOff: 'Notifications aren’t set up on the server yet.', denied: 'Permission was blocked. Allow it in the browser settings and try again.',
   },
 };
 
-export default function NotifySheet({ lang, onClose, soundOn, onToggleSound, pushAvailable = true }) {
+export default function NotifySheet({ lang, onClose, soundOn, onToggleSound, pushAvailable = true, pro = true, onGetPro }) {
   const T = TX[lang] || TX.en;
   const [st, setSt] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -53,17 +55,21 @@ export default function NotifySheet({ lang, onClose, soundOn, onToggleSound, pus
 
         {pushAvailable && <>
         <div className="alert-sep" />
-        <div className="alert-text head"><b>{T.notifHead}</b></div>
+        <div className="alert-text head"><b>{T.notifHead} <span className="pro-badge sm">PRO</span></b></div>
         <span className="sheet-note">{T.body}</span>
+        {!pro && <div className="notify-hint">{T.proOnly}</div>}
+        {pro && <>
         {st?.needsInstall && <div className="notify-hint">{T.install}</div>}
         {st && !st.supported && !st.needsInstall && <div className="notify-hint">{T.unsupported}</div>}
         {st?.on && <div className="notify-on">● {T.enabled}</div>}
         {msg && <div className="notify-hint">{msg}</div>}
         </>}
+        </>}
         <div className="btn-row">
           <button className="nb nb-secondary" onClick={onClose}>{T.close}</button>
-          {pushAvailable && st?.on && <button className="nb nb-secondary" onClick={test} disabled={busy}>{T.test}</button>}
-          {pushAvailable && !blocked && <button className={`nb ${st?.on ? 'nb-secondary' : 'nb-primary'}`} onClick={toggle} disabled={busy || !st}>{st?.on ? T.off : T.on}</button>}
+          {pushAvailable && pro && st?.on && <button className="nb nb-secondary" onClick={test} disabled={busy}>{T.test}</button>}
+          {pushAvailable && !pro && <button className="nb nb-primary" onClick={onGetPro}>{T.getPro}</button>}
+          {pushAvailable && pro && !blocked && <button className={`nb ${st?.on ? 'nb-secondary' : 'nb-primary'}`} onClick={toggle} disabled={busy || !st}>{st?.on ? T.off : T.on}</button>}
         </div>
       </div>
     </div>
