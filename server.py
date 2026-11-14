@@ -2644,6 +2644,37 @@ async def handle_voice_confirm(request):
     return resp
 
 
+_ALEXA_LOG_RE = re.compile(
+    r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) .*?INFO\s+(setup\.xml requested by Echo|Attempting to get state for (.+)|Attempting to turn (on|off) (.+))$",
+    re.M)
+
+
+def voice_alexa_seen() -> dict:
+    """When an Alexa speaker last read the devices, checked one, or sent a command,
+    taken from the helper's own log. Lets the Voice page show where a setup stops."""
+    out = {"read": None, "check": None, "command": None, "command_name": "", "command_on": None, "since": None}
+    path = Path(__file__).parent / "alexa.log"
+    try:
+        out["since"] = int(path.stat().st_ctime)
+        with open(path, "rb") as fh:
+            fh.seek(max(0, path.stat().st_size - 300_000))
+            text = fh.read().decode("utf-8", "replace")
+    except Exception:
+        return out
+    for m in _ALEXA_LOG_RE.finditer(text):
+        try:
+            ts = int(time.mktime(time.strptime(m.group(1), "%Y-%m-%d %H:%M:%S")))
+        except ValueError:
+            continue
+        if m.group(2).startswith("setup.xml"):
+            out["read"] = ts
+        elif m.group(3):
+            out["check"] = ts
+        else:
+            out.update(command=ts, command_on=m.group(4) == "on", command_name=m.group(5).strip())
+    return out
+
+
 def voice_needs_discover() -> bool:
     """True when the devices differ from the set Alexa last discovered (as far as we know)."""
     if not _voice.get("enabled", True) or not _voice_device_names:
@@ -2683,6 +2714,8 @@ def voice_payload() -> dict:
         "log": _voice_log[:50] if pro else _voice_log[:1],
         "needs_discover": voice_needs_discover(),
         "bases": bases,
+        "alexa": voice_alexa_seen(),
+        "names": list(_voice_device_names),
         "gen": int(_voice.get("gen") or 0),
         "pending": (_voice_pending or {}).get("recipe"),
     }
@@ -3141,9 +3174,9 @@ def start_fauxmo(server_port: int):
         if server_port == 8420:   # a helper left by an older Nuqta used this name and still holds the ports
             subprocess.run(["pkill", "-f", "fauxmo -c .*xbloom_fauxmo.json"], check=False)
         time.sleep(0.5)
-        alexa_log = open(Path(__file__).parent / "alexa.log", "a")
+        alexa_log = open(Path(__file__).parent / "alexa.log", "w")   # fresh each start; read by voice_alexa_seen()
         proc = subprocess.Popen(
-            [sys.executable, str(helper), "-c", str(cfg_path), "-v"]
+            [sys.executable, str(helper), "-c", str(cfg_path), "-vv"]
             + (["--salt", str(_voice["gen"])] if _voice.get("gen") else []),
             stdout=alexa_log, stderr=alexa_log,
         )

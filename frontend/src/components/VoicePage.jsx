@@ -45,6 +45,12 @@ const TX = {
     fresh2: 'In the Alexa app, open Devices and delete the old Nuqta devices. They show as “Device is unresponsive”.',
     fresh3: 'Choose what you want on the Devices tab, then in the Alexa app: Add device → Discover.',
     freshBtn: 'Reset devices', freshDone: 'Reset. Old devices no longer answer. Delete them in the Alexa app, then Discover.', cancel: 'Cancel',
+    chk: 'Connection check', chkSub: 'Live. Shows how far Alexa gets.',
+    chk1: 'Alexa read your devices', chk1h: 'Say “Alexa, discover devices” near the speaker.',
+    chk2: 'Alexa checked a device', chk2h: 'Open Devices in the Alexa app and pull down to refresh.',
+    chk3: 'Alexa sent a command', chk3h: 'Tap a device in the Alexa app, or say “Alexa, turn on coffee machine”.',
+    notYet: 'Not yet', ago: (s) => (s < 60 ? `${s} s ago` : s < 3600 ? `${Math.floor(s / 60)} min ago` : `${Math.floor(s / 3600)} h ago`),
+    sending: 'Alexa is being offered:',
     recCmds: 'Recipe commands', enabledOf: (a) => `${a} of 10 enabled`, recLink: 'Recipes',
     recTitle: 'Recipe voice commands', of10: 'of 10', star: '★ = default coffee', typeName: 'Type a name in English letters',
     pArabic: 'Arabic name may not be spoken', pEmoji: 'Emoji cannot be spoken', pEmpty: 'Needs a spoken name', pDup: 'Name already used',
@@ -100,6 +106,12 @@ const TX = {
     fresh2: 'في تطبيق Alexa افتح الأجهزة واحذف أجهزة نقطة القديمة. تظهر بعبارة «الجهاز لا يستجيب».',
     fresh3: 'اختر ما تريده من تبويب الأجهزة، ثم في تطبيق Alexa: إضافة جهاز ← اكتشاف.',
     freshBtn: 'إعادة ضبط الأجهزة', freshDone: 'تمت إعادة الضبط. الأجهزة القديمة لم تعد تستجيب. احذفها من تطبيق Alexa ثم شغّل الاكتشاف.', cancel: 'إلغاء',
+    chk: 'فحص الاتصال', chkSub: 'مباشر. يوضّح إلى أين يصل Alexa.',
+    chk1: 'قرأ Alexa أجهزتك', chk1h: 'قل «Alexa, discover devices» قرب السماعة.',
+    chk2: 'فحص Alexa أحد الأجهزة', chk2h: 'افتح الأجهزة في تطبيق Alexa واسحب للتحديث.',
+    chk3: 'أرسل Alexa أمراً', chk3h: 'اضغط جهازاً في تطبيق Alexa، أو قل «Alexa, turn on coffee machine».',
+    notYet: 'ليس بعد', ago: (s) => (s < 60 ? `قبل ${s} ث` : s < 3600 ? `قبل ${Math.floor(s / 60)} د` : `قبل ${Math.floor(s / 3600)} س`),
+    sending: 'ما يُعرض على Alexa:',
     recCmds: 'أوامر الوصفات', enabledOf: (a) => `${a} من 10 مفعّلة`, recLink: 'الوصفات',
     recTitle: 'الأوامر الصوتية للوصفات', of10: 'من 10', star: '★ = القهوة الافتراضية', typeName: 'اكتب اسماً بحروف إنجليزية',
     pArabic: 'الاسم العربي قد لا يُنطق', pEmoji: 'الرموز لا تُنطق', pEmpty: 'يحتاج اسماً منطوقاً', pDup: 'الاسم مستخدم',
@@ -177,6 +189,7 @@ export default function VoicePage({ lang, machine, tick, onBack, onGetPro, onCon
 
   const load = useCallback(() => fetch('/api/voice').then((r) => r.json()).then((x) => { if (x && x.devices) setD(x); }).catch(() => {}), []);
   useEffect(() => { load(); }, [load, tick]);
+  useEffect(() => { const iv = setInterval(load, 5000); return () => clearInterval(iv); }, [load]);   // keeps the connection check live
   const patch = useCallback(async (body) => {
     try {
       const r = await fetch('/api/voice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -263,6 +276,23 @@ export default function VoicePage({ lang, machine, tick, onBack, onGetPro, onCon
               </div>
             ))}
           </div>
+          {d.enabled && d.helper && (
+            <div className="vc-card vc-check">
+              <div className="vc-card-head"><b className="vc-card-title">{T.chk}</b><span className="vc-muted">{T.chkSub}</span></div>
+              {[['read', T.chk1, T.chk1h], ['check', T.chk2, T.chk2h], ['command', T.chk3, T.chk3h]].map(([k, label, hint]) => {
+                const ts = d.alexa?.[k];
+                const secs = ts ? Math.max(0, Math.round(Date.now() / 1000 - ts)) : null;
+                return (
+                  <div key={k} className={`vc-check-row${ts ? ' ok' : ''}`}>
+                    <i />
+                    <div><b>{label}{k === 'command' && ts && d.alexa.command_name ? ` · ${d.alexa.command_name}` : ''}</b>{!ts && <span>{hint}</span>}</div>
+                    <span className={`vc-chip ${ts ? 'ok' : 'idle'}`}>{ts ? T.ago(secs) : T.notYet}</span>
+                  </div>
+                );
+              })}
+              <div className="vc-muted vc-offered">{T.sending} <span dir="ltr">{(d.names || []).join(' · ') || '—'}</span></div>
+            </div>
+          )}
           <div className="vc-card vc-steps">
             <b className="vc-card-title">{T.steps}</b>
             <ol>{[T.s1, T.s2, T.s3].map((s, i) => <li key={i}><span dir="ltr">{i + 1}</span>{s}</li>)}</ol>
