@@ -1142,18 +1142,82 @@ async def _load_and_start(recipe) -> str | None:
     return await send_frame(frame_execute())
 
 
+# "Brew without grinding": the machine ignores every documented "skip the grinder" signal (tested
+# 2026-11-14 on V12.0D.500), so Nuqta pours the recipe itself through the hot-water screen, which
+# needs no beans: each pour with its own amount, temperature, pattern and flow, then its wait.
+_nogrind = {"task": None, "stop": False}
+
+
+def nogrind_running() -> bool:
+    return bool(_nogrind["task"] and not _nogrind["task"].done())
+
+
+async def _nogrind_pours(recipe: dict) -> None:
+    global module_mode, brewer_dirty
+    name = recipe.get("name", "")
+    pours = [p for p in (recipe.get("pours") or []) if float(p.get("volume_ml") or 0) > 0]
+    total = sum(float(p["volume_ml"]) for p in pours)
+    poured = 0.0
+    log.info("No beans: pouring %s through the water screen (%d pours, %.0f ml)", name, len(pours), total)
+    try:
+        for i, p in enumerate(pours, 1):
+            if _nogrind["stop"]:
+                break
+            vol, temp = float(p["volume_ml"]), float(p.get("temp_c", 92))
+            pat, flow = pattern_to_byte(p.get("pattern", PAT_SPIRAL)), float(p.get("flow", 3.0))
+            await broadcast({"type": "toast", "msg": f"{name} · {i}/{len(pours)} · {round(vol)} ml", "level": "info"})
+            module_mode = "brewer"
+            brewer_dirty = True
+            await send_frame(frame_brewer_enter(pat, temp))
+            await _wait_until(lambda: state.activity_code == 3, 4.0, 0.1)
+            await asyncio.sleep(0.4)
+            err = await send_frame(frame_brewer_start(flow, vol, temp, pat))
+            if err:
+                raise RuntimeError(err)
+            await _wait_until(lambda: state.activity_code == 35, 8.0, 0.1)
+            # the machine heats, pours, then leaves the pouring state (36/1/3)
+            await _wait_until(lambda: _nogrind["stop"] or state.activity_code != 35, vol / max(1.0, flow) * 2 + 60, 0.2)
+            poured += vol
+            if i < len(pours) and not _nogrind["stop"]:
+                wait = float(p.get("pause_s") or 0)
+                t0 = time.time()
+                while time.time() - t0 < wait and not _nogrind["stop"]:
+                    await asyncio.sleep(0.2)
+        if _nogrind["stop"]:
+            await send_frame(frame_brewer_stop())
+            await asyncio.sleep(0.4)
+        await send_frame(frame_quit_brewer())
+        await asyncio.sleep(0.6)
+        module_mode = ""
+        if _nogrind["stop"]:
+            log.info("No-grind brew stopped after %.0f ml", poured)
+            await broadcast({"type": "toast", "msg": "Brew stopped", "level": "info"})
+        else:
+            log.info("No-grind brew finished: %s (%.0f ml)", name, poured)
+            notify_finished(name, state.weight_g)
+    except Exception as e:
+        log.warning("No-grind brew failed: %s", e)
+        module_mode = ""
+        await broadcast({"type": "toast", "msg": f"Brew without grinding failed: {e}", "level": "error"})
+
+
 async def skip_grind_and_brew(fallback: dict | None = None) -> str | None:
-    """No beans: stop the stuck run and brew the same recipe with water only (grounds already in)."""
+    """No beans: stop the stuck run and pour the same recipe with water only (grounds already in)."""
     recipe = brew_session.get("recipe") or fallback
     if not recipe:
         return "No recipe"
+    if nogrind_running():
+        return None
     brew_session["user_stopped"] = True
-    await send_frame(frame_stop())
-    await _wait_until(lambda: not state.brew_active, 8.0, 0.2)
-    await asyncio.sleep(1.0)
+    if state.brew_active:
+        await send_frame(frame_stop())
+        await _wait_until(lambda: not state.brew_active, 8.0, 0.2)
+        await asyncio.sleep(1.0)
     state.fault = ""
-    log.info("No beans: brewing %s without grinding", recipe.get("name", "?"))
-    return await _load_and_start({**recipe, "grinder_on": False})
+    await leave_modules()
+    _nogrind["stop"] = False
+    _nogrind["task"] = asyncio.create_task(_nogrind_pours(recipe))
+    return None
 
 
 async def run_scheduled_brew(sched: dict):
@@ -2167,7 +2231,11 @@ async def _run_ws_session(ws, peer: str = ""):
                 result = await send_confirmed(frame_resume())
             elif action == "stop":
                 brew_session["user_stopped"] = True
-                result = await send_confirmed(frame_stop())
+                if nogrind_running():
+                    _nogrind["stop"] = True
+                    result = await send_frame(frame_brewer_stop())
+                else:
+                    result = await send_confirmed(frame_stop())
             elif action == "skip_grind":
                 result = await skip_grind_and_brew(cmd.get("recipe"))
             elif action == "load_recipe":
