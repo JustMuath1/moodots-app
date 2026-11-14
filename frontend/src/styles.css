@@ -2218,3 +2218,5 @@ a.nb { display: inline-flex; align-items: center; justify-content: center; text-
 .vc-check-row > div { display: flex; flex-direction: column; gap: 2px; margin-inline-end: auto; min-width: 0; }
 .vc-check-row b { font-size: 14px; } .vc-check-row div span { font-size: 12.5px; color: var(--muted); }
 .vc-offered { padding-top: 10px; border-top: 1px solid var(--line); }
+.vc-send { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-radius: 16px; border: 1px solid var(--accent); background: var(--accent-sel); }
+.vc-send.live { border-color: var(--line); background: var(--surface); }

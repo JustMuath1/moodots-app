@@ -2465,7 +2465,7 @@ ARABIC_RE = re.compile(r"[\u0600-\u06FF]")
 
 
 def _voice_load() -> dict:
-    v = {"enabled": True, "devices": {}, "recipes": None, "default": "", "safety": {}, "needs_discover": False}
+    v = {"enabled": False, "devices": {}, "recipes": None, "default": "", "safety": {}}
     try:
         v.update(json.loads(VOICE_FILE.read_text()))
     except Exception:
@@ -2500,7 +2500,9 @@ def voice_safety() -> dict:
 
 
 def voice_device_on(key: str) -> bool:
-    return not pro_active() or (_voice.get("devices") or {}).get(key, True)
+    if not pro_active():
+        return True          # free: the six basic devices, all or nothing (the main switch)
+    return bool((_voice.get("devices") or {}).get(key, False))   # Pro: only what was chosen
 
 
 def voice_problem(voice: str, recipe_name: str = "") -> str:
@@ -2592,7 +2594,7 @@ async def _voice_entry(request, action: str, source: str):
         return web.json_response(await handle_connect_action())
     if action not in VOICE_ACTION_DEVICE:
         return web.json_response({"ok": False, "error": "Unknown action"}, status=400)
-    if not _voice.get("enabled", True):
+    if not _voice.get("enabled", False):
         r = refuse("voice_off")
         await broadcast({"type": "voice"})
         return r
@@ -2695,7 +2697,7 @@ def voice_alexa_seen() -> dict:
 
 def voice_needs_discover() -> bool:
     """True when the devices differ from the set Alexa last discovered (as far as we know)."""
-    if not _voice.get("enabled", True) or not _voice_device_names:
+    if not _voice.get("enabled", False) or not _voice_device_names:
         return False
     known = _voice.get("known_names")
     if known is None:            # first time: assume Alexa already has today's set
@@ -2719,9 +2721,9 @@ def voice_payload() -> dict:
     default = (alexa_selected_recipe() or {}).get("name", "")
     return {
         "pro": pro,
-        "enabled": bool(_voice.get("enabled", True)),
+        "enabled": bool(_voice.get("enabled", False)),
         "helper": bool(shutil_which("fauxmo")),
-        "count": len(_voice_device_names) if _voice.get("enabled", True) else 0,
+        "count": len(_voice_device_names) if _voice.get("enabled", False) else 0,
         "devices": [{"key": k, "enabled": voice_device_on(k),
                      "state": "momentary" if k in ("scale", "wake") else ("on" if states.get(k) else "off")}
                     for k in VOICE_DEVICE_KEYS],
@@ -3170,7 +3172,7 @@ def start_fauxmo(server_port: int):
     cfg_path = Path(tempfile.gettempdir()) / f"xbloom_fauxmo_{server_port}.json"   # per server, so two copies never stop each other
     cfg_path.write_text(json.dumps(config, indent=2))
     if os.environ.get("NUQTA_NO_ALEXA"):     # tests: work everything out, start nothing
-        if not _voice.get("enabled", True):
+        if not _voice.get("enabled", False):
             _voice_device_names = []
         return
     fauxmo_bin = shutil.which("fauxmo")
@@ -3180,7 +3182,7 @@ def start_fauxmo(server_port: int):
         subprocess.run(["pkill", "-f", f"voice_helper.py -c {cfg_path}"], check=False)
         subprocess.run(["pkill", "-f", f"fauxmo -c {cfg_path}"], check=False)
 
-    if fauxmo_bin and not _voice.get("enabled", True):
+    if fauxmo_bin and not _voice.get("enabled", False):
         stop_helpers()
         _voice_device_names = []
         log.info("Voice control is off — Alexa helper stopped")

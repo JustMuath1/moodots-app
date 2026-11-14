@@ -11,7 +11,9 @@ const TX = {
     tabs: { overview: 'Overview', devices: 'Devices', recipes: 'Recipes', shortcuts: 'Shortcuts', safety: 'Safety', log: 'Log' },
     vc: 'Voice control', on: 'On', off: 'Off', seen: 'Devices Alexa can see', last: 'Last command', none: 'None yet',
     mConnected: 'Machine connected', mOff: 'Machine not connected', mAsleep: 'Machine asleep', mBrewing: 'Brewing',
-    bOff: 'Voice control is off. Alexa cannot reach the machine.', turnOn: 'Turn on',
+    bOff: 'Nothing is offered to Alexa yet. Choose your devices first, then send them.', turnOn: 'Choose devices',
+    send: (n) => `Send to Alexa · ${n}`, sendNone: 'Choose at least one', stopSend: 'Stop offering', sentHint: 'Sent. Now in the Alexa app: Add device → Discover.',
+    offOn: 'Offered to Alexa', offOff: 'Not offered yet',
     bHelper: 'The Alexa helper is not installed on this computer.', howInstall: 'How to install',
     helperHow: 'On the computer running Nuqta, run the Nuqta installer again; it installs the Alexa helper. Then restart Nuqta.',
     bDisc: 'The machine is not connected over Bluetooth. Voice commands will be refused.', connect: 'Connect',
@@ -22,7 +24,7 @@ const TX = {
     appleHow: 'Scan a pairing code in the Home app on iPhone. Away from home you need an Apple TV or HomePod.',
     googleHow: 'Link your Nuqta account inside the Google Home app. It goes through the Nuqta server.',
     rediscover: 'Re-discover devices', rediscovered: 'Devices refreshed. In the Alexa app: Add device → Discover.', setUp: 'Set up',
-    steps: 'Set up in three steps', s1: 'Run Nuqta on the home computer', s2: 'In the Alexa app: Add device → Discover', s3: 'Say: "Alexa, turn on coffee"',
+    steps: 'Set up in three steps', s1: 'Choose what Alexa gets on the Devices tab, then press Send to Alexa', s2: 'In the Alexa app: Add device → Discover', s3: 'Say: "Alexa, turn on coffee"',
     changed: 'Recipes changed. Run Discover devices in Alexa again.', done: 'Done',
     defCoffee: 'Default coffee', defSub: 'What “Alexa, turn on coffee” brews', recent: 'Recent commands', logLink: 'Log',
     proTitle: 'Nuqta Pro', proSub: 'A complete voice control centre. One tap to set up, updated for you.',
@@ -72,7 +74,9 @@ const TX = {
     tabs: { overview: 'نظرة عامة', devices: 'الأجهزة', recipes: 'الوصفات', shortcuts: 'الاختصارات', safety: 'الأمان', log: 'السجل' },
     vc: 'التحكم الصوتي', on: 'يعمل', off: 'متوقف', seen: 'أجهزة يراها Alexa', last: 'آخر أمر', none: 'لا يوجد بعد',
     mConnected: 'المكنة متصلة', mOff: 'المكنة غير متصلة', mAsleep: 'المكنة نائمة', mBrewing: 'تحضير جارٍ',
-    bOff: 'التحكم الصوتي متوقف. لن يسمع Alexa المكنة.', turnOn: 'تشغيل',
+    bOff: 'لا شيء معروض على Alexa بعد. اختر أجهزتك أولاً ثم أرسلها.', turnOn: 'اختر الأجهزة',
+    send: (n) => `أرسل إلى Alexa · ${n}`, sendNone: 'اختر جهازاً واحداً على الأقل', stopSend: 'إيقاف العرض', sentHint: 'تم الإرسال. الآن في تطبيق Alexa: إضافة جهاز ← اكتشاف.',
+    offOn: 'معروضة على Alexa', offOff: 'غير معروضة بعد',
     bHelper: 'مساعد Alexa غير مثبّت على هذا الكمبيوتر.', howInstall: 'كيف أثبّته',
     helperHow: 'على الكمبيوتر الذي يشغّل نقطة، شغّل مثبّت نقطة مرة أخرى؛ يثبّت مساعد Alexa. ثم أعد تشغيل نقطة.',
     bDisc: 'المكنة غير متصلة بالبلوتوث. الأوامر الصوتية ستُرفض.', connect: 'اتصال',
@@ -83,7 +87,7 @@ const TX = {
     appleHow: 'امسح رمز الاقتران في تطبيق Home على iPhone. خارج المنزل تحتاج Apple TV أو HomePod.',
     googleHow: 'اربط حساب نقطة من داخل تطبيق Google Home. يمرّ عبر خادم نقطة.',
     rediscover: 'إعادة اكتشاف الأجهزة', rediscovered: 'تم تحديث الأجهزة. في تطبيق Alexa: إضافة جهاز ← اكتشاف.', setUp: 'إعداد',
-    steps: 'الإعداد في ثلاث خطوات', s1: 'شغّل نقطة على كمبيوتر المنزل', s2: 'في تطبيق Alexa: إضافة جهاز ← اكتشاف', s3: 'قل: «Alexa, turn on coffee»',
+    steps: 'الإعداد في ثلاث خطوات', s1: 'اختر ما يصل إلى Alexa من تبويب الأجهزة، ثم اضغط «أرسل إلى Alexa»', s2: 'في تطبيق Alexa: إضافة جهاز ← اكتشاف', s3: 'قل: «Alexa, turn on coffee»',
     changed: 'تغيّرت الوصفات. شغّل اكتشاف الأجهزة في Alexa مرة أخرى.', done: 'تم',
     defCoffee: 'القهوة الافتراضية', defSub: 'ما يحضّره «Alexa, turn on coffee»', recent: 'آخر الأوامر', logLink: 'السجل',
     proTitle: 'نقطة برو', proSub: 'مركز تحكم صوتي متكامل. إعداد بضغطة، ويتحدّث تلقائياً.',
@@ -220,7 +224,8 @@ export default function VoicePage({ lang, machine, tick, onBack, onGetPro, onCon
     }, 700);
   };
 
-  const banner = !d.enabled ? { cls: 'warn', text: T.bOff, btn: T.turnOn, act: () => patch({ enabled: true }) }
+  const picked = (pro ? d.devices.filter((x) => x.enabled).length : d.devices.length) + d.recipes.filter((r) => r.on).length;
+  const banner = !d.enabled ? { cls: 'warn', text: T.bOff, btn: tab === 'devices' ? null : T.turnOn, act: () => setTab('devices') }
     : !d.helper ? { cls: 'err', text: helperHelp ? T.helperHow : T.bHelper, btn: helperHelp ? null : T.howInstall, act: () => setHelperHelp(true) }
     : mState === 'off' ? { cls: 'err', text: T.bDisc, btn: T.connect, act: onConnect }
     : mState === 'asleep' ? { cls: 'warn', text: T.bAsleep, btn: T.wake, act: onWake }
@@ -336,7 +341,13 @@ export default function VoicePage({ lang, machine, tick, onBack, onGetPro, onCon
       <div className="vc-table">
         <div className="vc-choose">
           <div><b>{T.chooseTitle}</b><span>{T.chooseSub}</span></div>
-          <span className="vc-chip accent">{T.chosen(d.count)}</span>
+          <span className="vc-chip accent">{T.chosen(picked)}</span>
+        </div>
+        <div className={`vc-send${d.enabled ? ' live' : ''}`}>
+          <span className={`vc-chip ${d.enabled ? 'ok' : 'idle'}`}><i />{d.enabled ? T.offOn : T.offOff}</span>
+          {d.enabled
+            ? <button className="nb nb-secondary nb-sm" onClick={() => patch({ enabled: false })}>{T.stopSend}</button>
+            : <button className="nb nb-primary" disabled={picked === 0} onClick={() => patch({ enabled: true }).then(() => showToast?.(T.sentHint, 'info'))}>{picked === 0 ? T.sendNone : T.send(picked)}</button>}
         </div>
         {d.needs_discover && d.enabled && (
           <div className="vc-banner warn"><span>{T.sendHint}</span><button className="nb nb-secondary nb-sm" onClick={() => patch({ discovered: true })}>{T.done}</button></div>
@@ -462,7 +473,7 @@ export default function VoicePage({ lang, machine, tick, onBack, onGetPro, onCon
         <div className="vc-st-main">
           <span className="vc-st-icon"><VoiceMark size={30} /></span>
           <div><span>{T.vc}</span><b>{d.enabled ? T.on : T.off}</b></div>
-          <Switch on={d.enabled} label={T.vc} onChange={(v) => patch({ enabled: v })} />
+          <Switch on={d.enabled} label={T.vc} onChange={(v) => (v && picked === 0 ? setTab('devices') : patch({ enabled: v }))} />
         </div>
         <div className="vc-st-cell"><span>{T.seen}</span><b className="vc-num" dir="ltr">{d.count}</b></div>
         <div className="vc-st-cell"><span>{T.last}</span><b dir="auto">{last ? (last.recipe || (T.act[last.action] || (() => last.action))()) : T.none}</b>{lastW && <span dir="ltr">{lastW.label} {lastW.hm}</span>}</div>
