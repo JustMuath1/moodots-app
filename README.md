@@ -39,7 +39,7 @@ own computer — no account needed.
 - **Customisable home** per device, **4 themes** that recolour everything, **3 standby** scenes —
   more with [Nuqta Pro](#nuqta-pro).
 - **Arabic and English**, with Gregorian and Hijri dates.
-- **Alexa (optional):** "Alexa, turn on coffee".
+- **Alexa (optional):** "Alexa, turn on coffee" — see [Voice control](#voice-control-alexa).
 
 <p align="center">
   <img src="docs/screenshots/phone.png" width="240" alt="Nuqta on a phone">
@@ -196,6 +196,24 @@ dashboard"*, *"add my xBloom recipes"*, or *"start Nuqta"*. It follows the instr
 - **Fonts:** the UI prefers the licensed **Thmanyah** font and falls back to IBM Plex Sans Arabic.
   To use Thmanyah, put its `.woff2`/`.otf` files in a `fonts/` folder.
 
+## Voice control (Alexa)
+Nuqta shows up in the Alexa app as a set of on/off devices (Coffee, Coffee Pause, Hot Water,
+Grinder, Scale, Coffee Machine). It works on your home Wi‑Fi with any Echo that supports Matter
+(most Echo devices from 2019 on); no Alexa skill and no account are needed.
+
+1. In Nuqta, tap the microphone button in the top bar and turn **Voice control** on. With Nuqta
+   Pro you first pick what Alexa gets on the **Devices** tab, then press **Send to Alexa**.
+2. In the Alexa app: **Devices → + → Add Device → Matter**, then scan the QR code shown on the
+   Voice page or type its setup code.
+3. Say **"Alexa, turn on coffee"**. The dashboard follows along on screen.
+
+Device names are in English, so speak to Alexa in
+English. The installer sets up the voice add‑on; if the Voice page says it is missing, run the
+installer again (it needs Node.js) and restart Nuqta.
+
+**Apple Home and Google Home** can pair with the same setup code, but this is **not tested yet**,
+and each needs its own hub (Apple TV or HomePod; a Nest speaker, Nest Hub or Google TV Streamer).
+
 ## Nuqta Pro
 The app is complete and free on your home Wi‑Fi. **Nuqta Pro** unlocks the rest:
 
@@ -207,6 +225,8 @@ The app is complete and free on your home Wi‑Fi. **Nuqta Pro** unlocks the res
 - **Every standby scene** — Dalla and finjan, Palm, Riyadh, Dammam and Al‑Baha.
 - **Voice control page** — voice names for your recipes with Alexa, Siri and NFC shortcuts,
   safety options and a command log. (Basic Alexa control stays free.)
+- **Device notifications** — a "coffee ready" alert on your phone or tablet, even when Nuqta is
+  closed.
 - **Feature updates, automatically** — new Pro features arrive on their own.
 - **Nuqta Cloud** (included): open Nuqta from anywhere and get "coffee ready" alerts on your phone.
 
