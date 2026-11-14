@@ -1080,7 +1080,51 @@ async def ensure_awake():
     await asyncio.sleep(1.5)
 
 
+# The machine remembers the amount of the last "water only" pour until that screen is properly left.
+# A recipe started while it still remembers stops pouring at that amount (a 153 ml recipe ended at
+# 30 ml on 2026-11-14 after a 30 ml hot-water command). So: note every use of the water screen, and
+# before any recipe make the machine leave it and confirm that it did.
+brewer_dirty = True           # water screen used and not yet confirmed closed (unknown at start-up)
+_brewer_quit_seen = 0.0       # when the machine last confirmed leaving the water screen
+
+
+async def leave_modules() -> None:
+    """Before a recipe: stop and leave the water / grinder / scale screens, confirmed."""
+    global module_mode, brewer_dirty
+    if alexa_flags.get("grind") or module_mode == "grinder":
+        await send_frame(frame_grinder_stop())
+        await asyncio.sleep(0.3)
+        await send_frame(frame_quit_grinder())
+        await asyncio.sleep(0.3)
+        alexa_flags["grind"] = False
+    if module_mode == "scale":
+        await send_frame(frame_quit_scale())
+        await asyncio.sleep(0.3)
+    if alexa_flags.get("water") or module_mode == "brewer":
+        await send_frame(frame_brewer_stop())
+        await asyncio.sleep(0.4)
+        alexa_flags["water"] = False
+    if brewer_dirty or module_mode == "brewer":
+        for attempt in range(3):
+            asked = time.time()
+            if attempt:                      # the machine ignores "leave" unless it is on that screen
+                await send_frame(frame_brewer_enter(pattern_to_byte(PAT_SPIRAL), 90))
+                await asyncio.sleep(0.7)
+            await send_frame(frame_quit_brewer())
+            if await _wait_until(lambda: _brewer_quit_seen >= asked, 1.5, 0.1):
+                brewer_dirty = False
+                break
+        else:
+            log.warning("The machine did not confirm leaving the water screen before the brew")
+        await _wait_until(lambda: state.activity_code in (0, 1), 2.0, 0.1)
+    module_mode = ""
+    end_module_run()
+
+
 async def _load_and_start(recipe) -> str | None:
+    if not ble_client or not ble_client.is_connected:
+        return "Not connected"
+    await leave_modules()
     await reset_for_brew(recipe)
     await asyncio.sleep(0.3)
     for f in build_load_frames(recipe):
@@ -1090,6 +1134,20 @@ async def _load_and_start(recipe) -> str | None:
         await asyncio.sleep(0.15)
     await asyncio.sleep(0.8)
     return await send_frame(frame_execute())
+
+
+async def skip_grind_and_brew() -> str | None:
+    """No beans: stop the stuck run and brew the same recipe with water only (grounds already in)."""
+    recipe = brew_session.get("recipe")
+    if not recipe:
+        return "No recipe"
+    brew_session["user_stopped"] = True
+    await send_frame(frame_stop())
+    await _wait_until(lambda: not state.brew_active, 8.0, 0.2)
+    await asyncio.sleep(1.0)
+    state.fault = ""
+    log.info("No beans: brewing %s without grinding", recipe.get("name", "?"))
+    return await _load_and_start({**recipe, "grinder_on": False})
 
 
 async def run_scheduled_brew(sched: dict):
@@ -1299,6 +1357,17 @@ def _brew_ended():
         log.info("Brew stopped")
         log_brew_run(completed=False)
         return
+    total = recipe_total_ml(brew_session["recipe"]) if brew_session["recipe"] else 0
+    if total and state.water_ml < total * 0.85:
+        log.warning("Brew ended early: %.0f of %d ml poured", state.water_ml, total)
+        state.activity = "Ready"
+        state.fault = state.fault or "Ended early"
+        log_brew_run(completed=False)
+        if main_loop:
+            asyncio.run_coroutine_threadsafe(broadcast({"type": "brew_short", "data": {
+                "recipe": (brew_session["recipe"] or {}).get("name", ""),
+                "poured": round(state.water_ml), "total": total}}), main_loop)
+        return
     state.finished = True
     state.activity = "Done"
     name = (brew_session["recipe"] or {}).get("name", "")
@@ -1336,6 +1405,8 @@ def notify_finished(name: str, weight: float, demo: bool = False):
 async def reset_for_brew(recipe: dict):
     """Before a recipe starts: tare the scale and zero every number so the new brew starts clean."""
     brew_session.update(recipe=recipe, user_paused=False, user_stopped=False)
+    if state.fault in ("Ended early", "No beans"):
+        state.fault = ""
     state.weight_g = 0.0
     state.water_ml = 0.0
     state.pour_index = 0
@@ -1549,7 +1620,7 @@ def _trace_packet(code: int, payload: bytes, frame: bytes):
 
 
 def on_notification(sender, data: bytearray):
-    global module_mode
+    global module_mode, brewer_dirty, _brewer_quit_seen
     frames = assembler.feed(bytes(data))
     for frame in frames:
         ev = parse_event(frame)
@@ -1560,6 +1631,11 @@ def on_notification(sender, data: bytearray):
         _trace_packet(code, payload, frame)
         changed = True
         was_active = state.brew_active
+
+        if code in (CMD_BREWER_ENTER, CMD_BREWER_START, CMD_BREWER_STOP):
+            brewer_dirty = True
+        elif code == CMD_QUIT_BREWER:
+            _brewer_quit_seen = time.time()
 
         if code in (N_WEIGHT, N_WEIGHT_ALT) and len(payload) >= 4:
             state.weight_g = struct.unpack_from("<f", payload)[0]
@@ -2053,10 +2129,12 @@ async def _run_ws_session(ws, peer: str = ""):
             elif action == "stop":
                 brew_session["user_stopped"] = True
                 result = await send_confirmed(frame_stop())
+            elif action == "skip_grind":
+                result = await skip_grind_and_brew()
             elif action == "load_recipe":
-                module_mode = ""
                 recipe = cmd.get("recipe")
                 if recipe:
+                    await leave_modules()
                     await reset_for_brew(recipe)
                     await asyncio.sleep(0.3)
                     for f in build_load_frames(recipe):
@@ -2371,15 +2449,7 @@ async def _voice_action(action: str, want: str | None = None):
             return web.json_response({"ok": False, "error": "No recipes loaded"})
         if state.brew_active:
             return web.json_response({"ok": False, "error": "A brew is already running"})
-        module_mode = ""
-        await reset_for_brew(recipe)
-        await asyncio.sleep(0.3)
-        for f in build_load_frames(recipe):
-            result = await send_confirmed(f)
-            if result:
-                return web.json_response({"ok": False, "error": result})
-        await asyncio.sleep(1.5)
-        result = await send_confirmed(frame_execute())
+        result = await _load_and_start(recipe)
         if result:
             return web.json_response({"ok": False, "error": result})
         return web.json_response({"ok": True, "recipe": recipe.get("name")})
@@ -2410,10 +2480,16 @@ async def _voice_action(action: str, want: str | None = None):
         if not result:
             return web.json_response({"ok": True})
     elif action == "water_stop":
+        if alexa_flags["water"] or module_mode == "brewer" or state.activity_code in (3, 35):
+            alexa_flags["water"] = False
+            result = await send_frame(frame_brewer_stop())
+            await asyncio.sleep(0.4)
+            for _ in range(3):
+                asked = time.time()
+                await send_frame(frame_quit_brewer())
+                if await _wait_until(lambda: _brewer_quit_seen >= asked, 1.2, 0.1):
+                    break
         alexa_flags["water"] = False
-        result = await send_frame(frame_brewer_stop())
-        await asyncio.sleep(0.3)
-        await send_frame(frame_quit_brewer())
         module_mode = ""
     elif action in ("grind", "grind_stop"):
         if action == "grind":
@@ -3329,6 +3405,20 @@ def matter_restart() -> None:
     log.info("Matter bridge started with: %s", ", ".join(e["name"] for e in voice_offered()) or "nothing")
 
 
+async def handle_reset_modes(request):
+    """POST /api/machine/reset-modes (this computer only): leave the water/grinder/scale screens, confirmed."""
+    global brewer_dirty
+    if request.remote not in ("127.0.0.1", "::1"):
+        return web.json_response({"error": "local only"}, status=403)
+    if state.brew_active:
+        return web.json_response({"ok": False, "error": "brew_running"})
+    if not _is_connected():
+        return web.json_response({"ok": False, "error": "not_connected"})
+    brewer_dirty = True
+    await leave_modules()
+    return web.json_response({"ok": True, "confirmed": not brewer_dirty, "activity_code": state.activity_code})
+
+
 async def handle_voice_matter_get(request):
     if request.remote not in ("127.0.0.1", "::1"):
         return web.json_response({"error": "local only"}, status=403)
@@ -3541,6 +3631,7 @@ def main():
     app.router.add_get("/api/brews", handle_brews_get)
     app.router.add_get("/api/brews/curves", handle_brew_curves)
     app.router.add_post("/api/trace", handle_trace)
+    app.router.add_post("/api/machine/reset-modes", handle_reset_modes)
     app.router.add_get("/api/capabilities", handle_capabilities)
     app.router.add_get("/api/hub/status", handle_hub_status)
     app.router.add_post("/api/hub/request-code", handle_hub_request_code)

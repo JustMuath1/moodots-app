@@ -7,6 +7,7 @@ const FAULTS = {
   'No beans': { title: 'faultNoBeans', hint: 'faultNoBeansHint', icon: 'beans' },
   'Dose/water error': { title: 'faultDose', hint: 'faultDoseHint', icon: 'water' },
   'Grinder gear error': { title: 'faultGear', hint: 'faultGearHint', icon: 'alert' },
+  'Ended early': { title: 'faultShort', hint: 'faultShortHint', icon: 'alert' },
 };
 
 export function isMachineFault(fault) {
@@ -39,16 +40,23 @@ function FaultIcon({ kind }) {
   );
 }
 
-export default function FaultBanner({ fault, lang, onDismiss }) {
+// onSkipGrind: shown for "No beans" while the brew is waiting, to carry on with water only.
+// short: { poured, total } for a brew the machine ended before the recipe was finished.
+export default function FaultBanner({ fault, lang, onDismiss, onSkipGrind, short }) {
   const f = FAULTS[fault];
   if (!f) return null;
+  const skip = fault === 'No beans' && onSkipGrind;
+  const hint = skip ? t('faultNoBeansAsk', lang)
+    : fault === 'Ended early' && short ? t('faultShortDetail', lang).replace('{poured}', short.poured).replace('{total}', short.total)
+      : t(f.hint, lang);
   return (
     <div className="fault-banner" role="alert">
       <div className="fault-icon"><FaultIcon kind={f.icon} /></div>
       <div className="fault-text">
         <div className="fault-title">{t(f.title, lang)}</div>
-        <div className="fault-hint">{t(f.hint, lang)}</div>
+        <div className="fault-hint">{hint}</div>
       </div>
+      {skip && <button className="nb nb-primary nb-sm fault-action" onClick={onSkipGrind}>{t('skipGrind', lang)}</button>}
       <button className="fault-dismiss" onClick={onDismiss} aria-label={t('dismiss', lang)}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
           <path d="M6 6l12 12M18 6L6 18" />

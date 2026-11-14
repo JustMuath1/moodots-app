@@ -2274,3 +2274,5 @@ a.nb { display: inline-flex; align-items: center; justify-content: center; text-
 @media (max-height: 540px) and (max-width: 900px) {
   .standby .sb-footer { grid-template-areas: "modes modes" "custom brand"; }
 }
+.fault-action { flex: none; white-space: nowrap; }
+@media (max-width: 600px) { .fault-banner { flex-wrap: wrap; } .fault-action { order: 3; flex: 1 1 100%; } }

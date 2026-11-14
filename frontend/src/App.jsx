@@ -123,6 +123,7 @@ export default function App() {
   const pickTlView = useCallback((v) => { setTlView(v); try { localStorage.setItem('nuqta_tl_view', v); } catch {} }, []);
   const [tankBack, setTankBack] = useState(null);
   const [showNotify, setShowNotify] = useState(false);
+  const [shortBrew, setShortBrew] = useState(null);   // { poured, total } when the machine ended a brew early
   const [showSettings, setShowSettings] = useState(false);
   const [showCloud, setShowCloud] = useState(false);
   const [showPro, setShowPro] = useState(false);
@@ -283,6 +284,8 @@ export default function App() {
       setTimeout(() => loadAnalyticsRef.current?.(), 300);
     } else if (msg.type === 'brew_reset') {
       resetForBrew();
+    } else if (msg.type === 'brew_short') {
+      setShortBrew(msg.data || null);
     } else if (msg.type === 'brew_finished') {
       // sent once by the server when the machine finishes the recipe (not only when the target weight is reached)
       const L = langRef.current;
@@ -453,6 +456,11 @@ export default function App() {
     ? Math.max(0, Math.ceil(waitRef.current.left - (now - waitRef.current.at) / 1000)) : 0;
   const activeFault = isConnected && isMachineFault(machineState.fault) && machineState.fault !== dismissedFault
     ? machineState.fault : '';
+
+  const skipGrind = useCallback(() => {
+    sendAction('skip_grind');
+    showToast(t('skipGrindStarted', lang), 'info');
+  }, [sendAction, showToast, lang]);
 
   const togglePause = useCallback(() => {
     sendAction(isPaused ? 'resume' : 'pause');
@@ -1246,7 +1254,7 @@ export default function App() {
       ) : wide ? (
         <div className="app-content wide">
           {activeFault && (
-            <FaultBanner fault={activeFault} lang={lang} onDismiss={() => setDismissedFault(activeFault)} />
+            <FaultBanner fault={activeFault} lang={lang} short={shortBrew} onSkipGrind={machineState.brew_active ? skipGrind : null} onDismiss={() => setDismissedFault(activeFault)} />
           )}
           {editing && <EditBar lang={lang} onAdd={() => setShowTray(true)} onReset={() => setLayout(DEFAULT_LAYOUT.map((w) => ({ ...w })))} onDone={() => { setEditing(false); setShowTray(false); }} />}
           <HomeGrid lang={lang} layout={layout} setLayout={setLayout} edit={editing} ctx={ctx} addons={addons} caps={caps} />
@@ -1256,7 +1264,7 @@ export default function App() {
           {/* ── Main column ── */}
           <div className="main-col">
             {activeFault && (
-              <FaultBanner fault={activeFault} lang={lang} onDismiss={() => setDismissedFault(activeFault)} />
+              <FaultBanner fault={activeFault} lang={lang} short={shortBrew} onSkipGrind={machineState.brew_active ? skipGrind : null} onDismiss={() => setDismissedFault(activeFault)} />
             )}
             {heroBlock}
             {timelineBlock}
