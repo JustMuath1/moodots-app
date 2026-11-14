@@ -31,6 +31,7 @@ import PourTimeline from './components/PourTimeline';
 import StepTracker from './components/StepTracker';
 import ThemeBoard from './components/ThemeBoard';
 import ProSheet from './components/ProSheet';
+import VoicePage from './components/VoicePage';
 import { themeLocked, standbyLocked } from './utils/pro';
 import { REMOTE, onLink, linkState, askGate, getEmail, initialLang, saveLang } from './utils/remote';
 import { CloudDots } from './components/Header';
@@ -125,6 +126,8 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showCloud, setShowCloud] = useState(false);
   const [showPro, setShowPro] = useState(false);
+  const [voiceTick, setVoiceTick] = useState(0);
+  const [voiceAsk, setVoiceAsk] = useState(null);   // a voice brew waiting for "yes" on this screen
   const [pushOn, setPushOn] = useState(false);
   const [caps, setCaps] = useState({ analytics: false, push: true, cloud: true, alexa: true }); // { prev, cap } after the tank is put back
   const [rateBrew, setRateBrew] = useState(null); // { id, recipe } after a finished brew
@@ -137,7 +140,7 @@ export default function App() {
   }, []);
   const goPage = useCallback((p) => {
     const path = p === 'analytics' ? '/analytics' : '/';
-    if (window.location.pathname !== path) window.history.pushState({}, '', path);
+    if (!REMOTE && p !== 'voice' && window.location.pathname !== path) window.history.pushState({}, '', path);
     setPage(p);
   }, []);
   const [tab, setTab] = useState('recipes');
@@ -311,6 +314,10 @@ export default function App() {
       setSchedules(msg.data || []);
     } else if (msg.type === 'cloud_status') {
       setCloudStatus(msg.data || { signed_in: false, email: '' });
+    } else if (msg.type === 'voice') {
+      setVoiceTick((n) => n + 1);
+    } else if (msg.type === 'voice_confirm') {
+      setVoiceAsk(msg.recipe ? { recipe: msg.recipe, source: msg.source } : null);
     } else if (msg.type === 'toast') {
       showToast(msg.msg, msg.level || 'info');
     } else if (msg.type === 'grinder') {
@@ -1164,6 +1171,8 @@ export default function App() {
         onOpenSettings={() => setShowSettings(true)}
         pushOn={pushOn}
         remote={REMOTE ? (remoteLost ? 'lost' : 'on') : null}
+        onVoice={() => { setEditing(false); setShowTray(false); goPage(page === 'voice' ? 'home' : 'voice'); }}
+        voiceLocked={caps.pro === false}
         onAnalytics={() => { if (!caps.analytics) { setShowPro(true); return; } setEditing(false); setShowTray(false); goPage(page === 'analytics' ? 'home' : 'analytics'); if (page !== 'analytics') loadAnalytics(); }}
         editing={editing}
         onCustomise={() => { setEditing((e) => !e); setShowTray(false); }}
@@ -1172,7 +1181,14 @@ export default function App() {
       {REMOTE && !remoteLost && backOnline && <div className="remote-bar back" role="status"><span className="rb-dot" />{lang === 'ar' ? 'عاد الاتصال' : 'Back online'}</div>}
       <Clock lang={lang} className="clock-strip" />
 
-      {page === 'analytics' ? (
+      {page === 'voice' ? (
+        <div className="app-content an-content">
+          <VoicePage lang={lang} machine={machineState} tick={voiceTick} showToast={showToast}
+            onBack={() => goPage('home')} onGetPro={() => setShowPro(true)}
+            onConnect={() => setShowConnection(true)} onWake={() => sendAction('wake')} onStop={stopBrew}
+            onAddRecipe={() => { goPage('home'); setShowAccount(true); }} />
+        </div>
+      ) : page === 'analytics' ? (
         <div className="app-content an-content">
           <AnalyticsPage lang={lang} analytics={analytics} onBack={() => goPage('home')} onAddBag={() => setShowBeans(true)} />
         </div>
@@ -1225,7 +1241,7 @@ export default function App() {
       )}
 
       {rateBrew && <RatingSheet lang={lang} brew={rateBrew} onClose={(saved) => { setRateBrew(null); if (saved) loadAnalytics(); }} />}
-      {showSettings && <SettingsSheet lang={lang} fullscreen={fullscreen} onToggleLang={toggleLang} onRestart={restartServer} onOpenAccount={() => setShowAccount(true)} onOpenCloud={() => setShowCloud(true)} onOpenPro={() => setShowPro(true)} pro={caps.pro} remoteEmail={REMOTE ? getEmail() : ''} onSignOut={() => askGate('signout')} onClose={() => setShowSettings(false)} />}
+      {showSettings && <SettingsSheet lang={lang} fullscreen={fullscreen} onToggleLang={toggleLang} onRestart={restartServer} onOpenAccount={() => setShowAccount(true)} onOpenCloud={() => setShowCloud(true)} onOpenPro={() => setShowPro(true)} pro={caps.pro} onOpenVoice={() => goPage('voice')} remoteEmail={REMOTE ? getEmail() : ''} onSignOut={() => askGate('signout')} onClose={() => setShowSettings(false)} />}
       {showCloud && <CloudSheet lang={lang} onClose={() => { setShowCloud(false); refreshCaps(); }} />}
       {showPro && <ProSheet lang={lang} pro={caps.pro} onSignIn={() => { setShowPro(false); setShowCloud(true); }} onClose={() => setShowPro(false)} />}
       {showNotify && <NotifySheet lang={lang} soundOn={soundOn} onToggleSound={toggleSound} pushAvailable={caps.push} onClose={() => { setShowNotify(false); refreshPush(); }} />}
@@ -1273,6 +1289,24 @@ export default function App() {
           weather={addons.weather && weather ? weather : null} verse={addons.verse ? VERSES[verseIndex % VERSES.length] : null}
           nextSchedule={nextSchedule}
           items={standbyItems} onItems={(next) => { setStandbyItems(next); try { localStorage.setItem('nuqta_standby_items', JSON.stringify(next)); } catch {} }} />
+      )}
+
+      {voiceAsk && (
+        <div className="cup-sheet-overlay">
+          <div className="cup-sheet" role="dialog" aria-modal="true">
+            <div className="grab" />
+            <div className="cup-top">
+              <span className="remote-pill">{voiceAsk.source === 'shortcut' ? (lang === 'ar' ? 'اختصار' : 'Shortcut') : 'Alexa'}</span>
+              <span dir="auto">{voiceAsk.recipe}</span>
+            </div>
+            <h3>{lang === 'ar' ? 'هل الكوب في مكانه؟' : 'Is your cup in place?'}</h3>
+            <p>{lang === 'ar' ? 'وصل أمر صوتي بالتحضير. سيبدأ بعد موافقتك.' : 'A voice command asked for a brew. It starts once you approve.'}</p>
+            <div className="cup-btns">
+              <button className="nb nb-primary" onClick={() => { setVoiceAsk(null); fetch('/api/voice/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ approve: true }) }); }}>{lang === 'ar' ? 'نعم، ابدأ' : 'Yes, start'}</button>
+              <button className="nb nb-secondary" onClick={() => { setVoiceAsk(null); fetch('/api/voice/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ approve: false }) }); }}>{lang === 'ar' ? 'إلغاء' : 'Cancel'}</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {cupCheck && (

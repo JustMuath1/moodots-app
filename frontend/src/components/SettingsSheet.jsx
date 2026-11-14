@@ -9,7 +9,7 @@ const TX = {
   en: { pro: 'Nuqta Pro', proOn: 'Active', proOff: 'Analytics, every theme and scene', proGet: 'Get Pro', proAccount: 'Account', cloud: 'Nuqta Cloud', cloudOpen: 'Open', title: 'Settings', language: 'Language', fullscreen: 'Fullscreen', fsOn: 'On', fsOff: 'Off', restart: 'Restart server', restarting: 'Restarting…', account: 'xBloom account', accountOpen: 'Open', close: 'Close' },
 };
 
-export default function SettingsSheet({ lang, fullscreen, onToggleLang, onRestart, onOpenAccount, onOpenCloud, onOpenPro, pro, remoteEmail, onSignOut, onClose }) {
+export default function SettingsSheet({ lang, fullscreen, onToggleLang, onRestart, onOpenAccount, onOpenCloud, onOpenPro, pro, remoteEmail, onSignOut, onOpenVoice, onClose }) {
   const T = TX[lang] || TX.en;
   const [restarting, setRestarting] = useState(false);
   const restart = async () => { setRestarting(true); await onRestart(); setTimeout(() => setRestarting(false), 3000); };
@@ -33,6 +33,16 @@ export default function SettingsSheet({ lang, fullscreen, onToggleLang, onRestar
             <div className="alert-row">
               <div className="alert-text"><b>{T.fullscreen}</b></div>
               <button className={`switch${fullscreen.active ? ' on' : ''}`} role="switch" aria-checked={fullscreen.active} aria-label={T.fullscreen} onClick={fullscreen.toggle} />
+            </div>
+          </>
+        )}
+
+        {onOpenVoice && (
+          <>
+            <div className="alert-sep" />
+            <div className="alert-row">
+              <div className="alert-text"><b>{lang === 'ar' ? 'التحكم الصوتي' : 'Voice control'} <span className="pro-badge sm">PRO</span></b><span>{lang === 'ar' ? 'Alexa · اختصارات · الأمان' : 'Alexa · shortcuts · safety'}</span></div>
+              <button className="nb nb-secondary nb-sm" onClick={() => { onClose(); onOpenVoice(); }}>{T.cloudOpen}</button>
             </div>
           </>
         )}

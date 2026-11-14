@@ -39,3 +39,7 @@ tests/
 
 # Nuqta Pro files downloaded from the hub
 pro_pack/
+
+# Voice control settings and activity log
+voice.json
+voice_log.json

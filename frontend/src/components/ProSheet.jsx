@@ -11,6 +11,7 @@ const TX = {
     f1: 'تحليلات التحضير', f1d: 'كم تحضّر وأوقاتك المفضلة، الوصفات الأكثر، ثبات الوزن، التقييمات، الماء، تكلفة الكوب والبن المستهلك.',
     f2: 'كل الثيمات', f2d: 'سعودي، الرياض، الدمام، الباحة، رمضاني ونيون.',
     f3: 'كل مشاهد الانتظار', f3d: 'الدلة، النخلة، الرياض، الدمام والباحة.',
+    f6: 'التحكم الصوتي', f6d: 'أسماء صوتية لوصفاتك مع Alexa، اختصارات Siri و NFC، خيارات الأمان وسجل الأوامر.',
     f4: 'تحديثات تلقائية للميزات', f4d: 'تصلك ميزات برو الجديدة وتحديثاتها تلقائياً.',
     f5: 'Nuqta Cloud', f5d: 'قريباً ومشمولة: نقطة من أي مكان وتنبيه «قهوتك جاهزة» على جوالك.',
     soon: 'قريباً',
@@ -23,6 +24,7 @@ const TX = {
     f1: 'Brew analytics', f1d: 'How much and when you brew, top recipes, dose consistency, ratings, water, cost per cup and beans used.',
     f2: 'Every theme', f2d: 'Saudi, Riyadh, Dammam, Al-Baha, Ramadan and Neon.',
     f3: 'Every standby scene', f3d: 'Dalla, Palm, Riyadh, Dammam and Al-Baha.',
+    f6: 'Voice control', f6d: 'Voice names for your recipes with Alexa, Siri and NFC shortcuts, safety options and a command log.',
     f4: 'Feature updates, automatically', f4d: 'New Pro features and updates arrive on their own.',
     f5: 'Nuqta Cloud', f5d: 'Coming soon, included: reach Nuqta from anywhere and get "coffee ready" alerts on your phone.',
     soon: 'Soon',
@@ -40,6 +42,7 @@ const ICONS = {
   f3: 'M12 3v2M12 19v2M5 12H3M21 12h-2M7 7L5.6 5.6M18.4 18.4L17 17M7 17l-1.4 1.4M18.4 5.6L17 7M12 8a4 4 0 100 8 4 4 0 000-8z',
   f4: 'M21 12a9 9 0 11-3-6.7L21 8M21 3v5h-5',
   f5: 'M7 18a4.5 4.5 0 01-.6-9A6 6 0 0118 8a4 4 0 01-1 10H7z',
+  f6: 'M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3zM5 11a7 7 0 0014 0M12 18v3',
 };
 
 export default function ProSheet({ lang, pro, onSignIn, onClose }) {
@@ -78,7 +81,7 @@ export default function ProSheet({ lang, pro, onSignIn, onClose }) {
         )}
 
         <ul className="pro-list">
-          {['f1', 'f2', 'f3', 'f4', 'f5'].map((k) => (
+          {['f1', 'f2', 'f3', 'f6', 'f4', 'f5'].map((k) => (
             <li key={k}>
               <span className="pro-ic"><Icon d={ICONS[k]} /></span>
               <div>

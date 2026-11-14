@@ -4,6 +4,8 @@ import Clock from './Clock';
 import Logo from './Logo';
 import { THEMES } from '../utils/themes';
 
+import { VoiceMark } from './VoicePage';
+
 const REMOTE_TX = {
   ar: { remote: 'عن بُعد', noSignal: 'بلا إنترنت', machineOn: 'المكنة متصلة', unknown: 'المكنة ؟' },
   en: { remote: 'Remote', noSignal: 'No signal', machineOn: 'Machine on', unknown: 'Machine ?' },
@@ -17,7 +19,7 @@ export function CloudDots() {
   );
 }
 
-export default function Header({ lang, ble, soundOn, onToggleSound, fullscreen, onOpenConnection, onOpenAccount, onRestart, onToggleLang, theme, onOpenThemes, canCustomise, editing, onCustomise, page, onAnalytics, onNotify, pushOn, showAnalytics, analyticsLocked, onOpenSettings, remote }) {
+export default function Header({ lang, ble, soundOn, onToggleSound, fullscreen, onOpenConnection, onOpenAccount, onRestart, onToggleLang, theme, onOpenThemes, canCustomise, editing, onCustomise, page, onAnalytics, onNotify, pushOn, showAnalytics, analyticsLocked, onOpenSettings, remote, onVoice, voiceLocked }) {
   const [restarting, setRestarting] = useState(false);
 
   const isOn = ble === 'connected';
@@ -57,6 +59,10 @@ export default function Header({ lang, ble, soundOn, onToggleSound, fullscreen, 
             <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
           </svg>
           {analyticsLocked && <span className="pro-dot" aria-label="Pro">PRO</span>}
+        </button>}
+        {onVoice && <button className={`icon-btn voice-btn${page === 'voice' ? ' on' : ''}`} onClick={onVoice} title={lang === 'ar' ? 'التحكم الصوتي' : 'Voice control'} aria-pressed={page === 'voice'}>
+          <VoiceMark size={20} />
+          {voiceLocked && <span className="pro-dot" aria-label="Pro">PRO</span>}
         </button>}
         {canCustomise && (
           <button className={`icon-btn customise-btn${editing ? ' on' : ''}`} onClick={onCustomise} title={t('customise', lang)} aria-pressed={editing}>

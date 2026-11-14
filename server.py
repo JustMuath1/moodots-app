@@ -2348,18 +2348,18 @@ async def _alexa_grind_off():
 
 
 async def _alexa_grind_autostop():
-    await asyncio.sleep(ALEXA_GRIND_MAX_S)
-    log.info("Alexa grinder: auto-stop after %ss", ALEXA_GRIND_MAX_S)
+    secs = voice_safety()["grind_s"]
+    await asyncio.sleep(secs)
+    log.info("Alexa grinder: auto-stop after %ss", secs)
     await _alexa_grind_off()
 
 
-async def handle_alexa_action(request):
-    action = request.match_info["action"]
+async def _voice_action(action: str, want: str | None = None):
+    """Carry out one voice/shortcut action. Returns the same JSON response the helper expects."""
     result = None
 
     global module_mode, _alexa_grind_task
     if action == "brew":
-        want = request.query.get("recipe")
         recipe = next((r for r in _all_recipes() if r.get("name") == want), None) if want else alexa_selected_recipe()
         if not recipe:
             return web.json_response({"ok": False, "error": "No recipes loaded"})
@@ -2397,12 +2397,13 @@ async def handle_alexa_action(request):
         if state.brew_active:
             return web.json_response({"ok": False, "error": "A brew is running"})
         module_mode = "brewer"
-        result = await send_frame(frame_brewer_enter(pattern_to_byte(PAT_SPIRAL), 93))
+        w_ml, w_temp = voice_safety()["water_ml"], voice_safety()["water_temp"]
+        result = await send_frame(frame_brewer_enter(pattern_to_byte(PAT_SPIRAL), w_temp))
         await asyncio.sleep(0.5)
-        result = result or await send_frame(frame_brewer_start(3.0, ALEXA_WATER_ML, 93, pattern_to_byte(PAT_SPIRAL)))
+        result = result or await send_frame(frame_brewer_start(3.0, w_ml, w_temp, pattern_to_byte(PAT_SPIRAL)))
         alexa_flags["water"] = not result
         if not result:
-            await broadcast({"type": "toast", "msg": f"Alexa: hot water {ALEXA_WATER_ML} ml"})
+            await broadcast({"type": "toast", "msg": f"Alexa: hot water {w_ml} ml"})
             return web.json_response({"ok": True})
     elif action == "water_stop":
         alexa_flags["water"] = False
@@ -2442,6 +2443,302 @@ async def handle_alexa_action(request):
         return web.json_response({"ok": False, "error": result})
     await broadcast({"type": "toast", "msg": f"Alexa: {action}"})
     return web.json_response({"ok": True})
+
+
+# ---------------------------------------------------------------------------
+# Voice control: settings, activity log and the page's API
+# ---------------------------------------------------------------------------
+VOICE_FILE = Path(__file__).parent / "voice.json"
+VOICE_LOG_FILE = Path(__file__).parent / "voice_log.json"
+VOICE_DEVICE_KEYS = ("coffee", "pause", "water", "grind", "scale", "wake")
+VOICE_ACTION_DEVICE = {"brew": "coffee", "stop": "coffee", "pause": "pause", "resume": "pause",
+                       "water": "water", "water_stop": "water", "grind": "grind", "grind_stop": "grind",
+                       "tare": "scale", "wake": "wake"}
+VOICE_SHORTCUTS = {"brew": "brew", "stop": "stop", "pause": "pause", "resume": "resume", "tare": "tare",
+                   "wake": "wake", "hot-water": "water", "hot-water-stop": "water_stop",
+                   "grind": "grind", "grind-stop": "grind_stop"}
+VOICE_SAFETY_DEFAULT = {"ask": False, "grind_s": 20, "water_ml": 200, "water_temp": 93}
+VOICE_SAFETY_RANGE = {"grind_s": (5, 60), "water_ml": (30, 500), "water_temp": (40, 98)}
+SPEAKABLE_RE = re.compile(r"[A-Za-z0-9]+(?: [A-Za-z0-9]+)*")
+ARABIC_RE = re.compile(r"[\u0600-\u06FF]")
+
+
+def _voice_load() -> dict:
+    v = {"enabled": True, "devices": {}, "recipes": None, "default": "", "safety": {}, "needs_discover": False}
+    try:
+        v.update(json.loads(VOICE_FILE.read_text()))
+    except Exception:
+        pass
+    return v
+
+
+_voice = _voice_load()
+try:
+    _voice_log: list = json.loads(VOICE_LOG_FILE.read_text())
+except Exception:
+    _voice_log = []
+_voice_pending: dict | None = None   # a voice brew waiting for "yes" on the dashboard
+_voice_device_names: list = []
+
+
+def _voice_save() -> None:
+    try:
+        VOICE_FILE.write_text(json.dumps(_voice, indent=2, ensure_ascii=False))
+    except Exception as e:
+        log.warning("Couldn't save voice settings: %s", e)
+
+
+def voice_safety() -> dict:
+    """Safety options. They are a Pro feature: without Pro the built-in defaults apply."""
+    out = dict(VOICE_SAFETY_DEFAULT)
+    if pro_active():
+        for k, v in (_voice.get("safety") or {}).items():
+            if k in out:
+                out[k] = v
+    return out
+
+
+def voice_device_on(key: str) -> bool:
+    return not pro_active() or (_voice.get("devices") or {}).get(key, True)
+
+
+def voice_problem(voice: str, recipe_name: str = "") -> str:
+    """'' when Alexa can say it; otherwise why not."""
+    v = (voice or "").strip()
+    if v and SPEAKABLE_RE.fullmatch(v):
+        return ""
+    if ARABIC_RE.search(v or recipe_name or ""):
+        return "arabic"
+    return "emoji" if v else "empty"
+
+
+def voice_recipe_slots() -> list:
+    """Up to 10 recipes that get their own voice command, in the user's order."""
+    recipes = [r.get("name", "") for r in _all_recipes() if r.get("name")]
+    stored = _voice.get("recipes") if pro_active() else None
+    slots, seen = [], set()
+    for it in stored or []:
+        n = it.get("name")
+        if n in recipes and n not in seen:
+            seen.add(n)
+            slots.append({"name": n, "voice": (it.get("voice") or "").strip(), "on": bool(it.get("on"))})
+    for n in recipes:
+        if n in seen:
+            continue
+        seen.add(n)
+        auto = "" if ARABIC_RE.search(n) else n
+        slots.append({"name": n, "voice": auto, "on": stored is None})
+    slots = slots[:10]
+    used = set()
+    for sl in slots:
+        sl["problem"] = voice_problem(sl["voice"], sl["name"])
+        dup = sl["voice"].lower() in used
+        if sl["problem"] or dup:
+            sl["on"] = False
+            if dup and not sl["problem"]:
+                sl["problem"] = "duplicate"
+        elif sl["on"]:
+            used.add(sl["voice"].lower())
+    return slots
+
+
+def voice_log_add(source: str, action: str, recipe: str | None, ok: bool, reason: str = "") -> None:
+    _voice_log.insert(0, {"ts": int(time.time()), "source": source, "action": action,
+                          "recipe": recipe or "", "ok": bool(ok), "reason": reason})
+    del _voice_log[100:]
+    try:
+        VOICE_LOG_FILE.write_text(json.dumps(_voice_log, ensure_ascii=False))
+    except Exception:
+        pass
+
+
+def _voice_reason(err: str) -> str:
+    e = (err or "").lower()
+    if "already running" in e or "brew is running" in e:
+        return "brew_running"
+    if "not connected" in e or "disconnected" in e:
+        return "not_connected"
+    if "no recipes" in e:
+        return "no_recipe"
+    return err or ""
+
+
+async def _voice_run(action: str, want: str | None, source: str):
+    """Run an action and record it in the activity log."""
+    recipe_name = None
+    if action == "brew":
+        r = next((x for x in _all_recipes() if x.get("name") == want), None) if want else alexa_selected_recipe()
+        recipe_name = (r or {}).get("name")
+    try:
+        resp = await _voice_action(action, want)
+        data = json.loads(resp.text or "{}")
+    except Exception as e:
+        resp, data = web.json_response({"ok": False, "error": str(e)}), {"ok": False, "error": str(e)}
+    voice_log_add(source, action, recipe_name, bool(data.get("ok")), _voice_reason(data.get("error", "")))
+    await broadcast({"type": "voice"})
+    return resp
+
+
+async def _voice_entry(request, action: str, source: str):
+    global _voice_pending
+    want = request.query.get("recipe")
+
+    def refuse(reason: str, status: int = 200):
+        voice_log_add(source, action, want, False, reason)
+        return web.json_response({"ok": False, "error": reason}, status=status)
+
+    if action == "connect":
+        return web.json_response(await handle_connect_action())
+    if action not in VOICE_ACTION_DEVICE:
+        return web.json_response({"ok": False, "error": "Unknown action"}, status=400)
+    if not _voice.get("enabled", True):
+        r = refuse("voice_off")
+        await broadcast({"type": "voice"})
+        return r
+    if not voice_device_on(VOICE_ACTION_DEVICE[action]):
+        r = refuse("device_off")
+        await broadcast({"type": "voice"})
+        return r
+    if action == "brew" and voice_safety()["ask"]:
+        recipe = next((x for x in _all_recipes() if x.get("name") == want), None) if want else alexa_selected_recipe()
+        if recipe and not state.brew_active and _is_connected():
+            _voice_pending = {"recipe": recipe.get("name"), "source": source, "ts": time.time()}
+            await broadcast({"type": "voice_confirm", "recipe": recipe.get("name"), "source": source})
+            return web.json_response({"ok": True, "waiting": True})
+    return await _voice_run(action, want, source)
+
+
+async def handle_alexa_action(request):
+    return await _voice_entry(request, request.match_info["action"], "alexa")
+
+
+async def handle_voice_shortcut(request):
+    """Plain addresses for Apple Shortcuts, Siri, NFC tags and Home Assistant (Pro)."""
+    action = VOICE_SHORTCUTS.get(request.match_info["action"])
+    if not action:
+        return web.json_response({"ok": False, "error": "Unknown action"}, status=404)
+    # a web page must not be able to fire these behind the user's back
+    if request.headers.get("Sec-Fetch-Site", "none") not in ("none", "same-origin"):
+        return web.json_response({"ok": False, "error": "cross_origin"}, status=403)
+    if not pro_active():
+        return web.json_response({"ok": False, "error": "pro_required"}, status=402)
+    return await _voice_entry(request, action, "shortcut")
+
+
+async def handle_voice_confirm(request):
+    """The dashboard's answer to "Is your cup in place?" for a waiting voice brew."""
+    global _voice_pending
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    pending, _voice_pending = _voice_pending, None
+    await broadcast({"type": "voice_confirm", "recipe": None})
+    if not pending or time.time() - pending["ts"] > 120:
+        return web.json_response({"ok": False, "error": "nothing_waiting"})
+    if not body.get("approve"):
+        voice_log_add(pending["source"], "brew", pending["recipe"], False, "cancelled")
+        await broadcast({"type": "voice"})
+        return web.json_response({"ok": True})
+    resp = await _voice_run("brew", pending["recipe"], pending["source"])
+    return resp
+
+
+def voice_needs_discover() -> bool:
+    """True when the devices differ from the set Alexa last discovered (as far as we know)."""
+    if not _voice.get("enabled", True) or not _voice_device_names:
+        return False
+    known = _voice.get("known_names")
+    if known is None:            # first time: assume Alexa already has today's set
+        _voice["known_names"] = sorted(_voice_device_names)
+        _voice_save()
+        return False
+    return sorted(_voice_device_names) != sorted(known)
+
+
+def voice_payload() -> dict:
+    ip = get_local_ip()
+    import socket
+    bases = [f"http://{ip}:{_alexa_port}"]
+    host = socket.gethostname().split(".")[0]
+    if host:
+        bases.append(f"http://{host}.local:{_alexa_port}")
+    pro = pro_active()
+    states = {"coffee": state.brew_active, "pause": state.brew_active and state.activity == "Paused",
+              "water": alexa_flags["water"] and module_mode == "brewer",
+              "grind": alexa_flags["grind"] and module_mode == "grinder"}
+    default = (alexa_selected_recipe() or {}).get("name", "")
+    return {
+        "pro": pro,
+        "enabled": bool(_voice.get("enabled", True)),
+        "helper": bool(shutil_which("fauxmo")),
+        "count": len(_voice_device_names) if _voice.get("enabled", True) else 0,
+        "devices": [{"key": k, "enabled": voice_device_on(k),
+                     "state": "momentary" if k in ("scale", "wake") else ("on" if states.get(k) else "off")}
+                    for k in VOICE_DEVICE_KEYS],
+        "recipes": voice_recipe_slots(),
+        "all_recipes": [r.get("name", "") for r in _all_recipes() if r.get("name")],
+        "default": default,
+        "safety": voice_safety(),
+        "log": _voice_log[:50] if pro else _voice_log[:1],
+        "needs_discover": voice_needs_discover(),
+        "bases": bases,
+        "pending": (_voice_pending or {}).get("recipe"),
+    }
+
+
+async def handle_voice_get(request):
+    return web.json_response(voice_payload())
+
+
+async def handle_voice_post(request):
+    try:
+        b = await request.json()
+    except Exception:
+        return web.json_response({"ok": False, "error": "bad_json"}, status=400)
+    restart = False
+    if "enabled" in b:
+        _voice["enabled"] = bool(b["enabled"])
+        restart = True
+    if b.get("discovered"):
+        _voice["known_names"] = sorted(_voice_device_names)
+    if b.get("rediscover"):
+        restart = True
+    pro_keys = ("device", "recipes", "default", "safety")
+    if any(k in b for k in pro_keys) and not pro_active():
+        return web.json_response({"ok": False, "error": "pro_required"}, status=402)
+    if "device" in b:
+        d = b["device"] or {}
+        if d.get("key") in VOICE_DEVICE_KEYS:
+            _voice.setdefault("devices", {})[d["key"]] = bool(d.get("enabled"))
+            restart = True
+    if "recipes" in b and isinstance(b["recipes"], list):
+        _voice["recipes"] = [{"name": str(r.get("name", "")), "voice": str(r.get("voice", "")).strip()[:40],
+                              "on": bool(r.get("on"))} for r in b["recipes"][:10] if r.get("name")]
+        restart = True
+    if "default" in b:
+        _voice["default"] = str(b["default"])
+        try:
+            ALEXA_SELECTED_FILE.write_text(json.dumps({"name": _voice["default"]}))
+        except Exception:
+            pass
+    if "safety" in b and isinstance(b["safety"], dict):
+        cur = dict(VOICE_SAFETY_DEFAULT, **(_voice.get("safety") or {}))
+        for k, v in b["safety"].items():
+            if k == "ask":
+                cur["ask"] = bool(v)
+            elif k in VOICE_SAFETY_RANGE:
+                lo, hi = VOICE_SAFETY_RANGE[k]
+                try:
+                    cur[k] = max(lo, min(hi, int(v)))
+                except (TypeError, ValueError):
+                    pass
+        _voice["safety"] = cur
+    _voice_save()
+    if restart:
+        await asyncio.get_running_loop().run_in_executor(None, start_fauxmo, _alexa_port)
+    await broadcast({"type": "voice"})
+    return web.json_response({"ok": True, **voice_payload()})
 
 
 # ---------------------------------------------------------------------------
@@ -2615,7 +2912,7 @@ async def handle_service_worker(request):
 async def handle_capabilities(request):
     """What this build offers, so the dashboard can show only the features that are present."""
     return web.json_response({"analytics": HAS_ANALYTICS and pro_active(), "pro": pro_active(),
-                              "push": HAS_PUSH, "cloud": True, "alexa": True})
+                              "push": HAS_PUSH, "cloud": True, "alexa": True, "voice": True})
 
 
 # ---- Nuqta Cloud (optional remote access / push via a hub) -----------------
@@ -2755,7 +3052,7 @@ def alexa_selected_recipe():
     """The recipe picked on the dashboard (falls back to the first one)."""
     recipes = _all_recipes()
     try:
-        name = json.loads(ALEXA_SELECTED_FILE.read_text()).get("name")
+        name = (_voice.get("default") if pro_active() else "") or json.loads(ALEXA_SELECTED_FILE.read_text()).get("name")
         for r in recipes:
             if r.get("name") == name:
                 return r
@@ -2772,9 +3069,7 @@ def alexa_name(name: str) -> str:
 
 def start_fauxmo(server_port: int):
     """Start fauxmo (Alexa sees each device as a smart plug on the Wi-Fi)."""
-    if os.environ.get("NUQTA_NO_ALEXA"):
-        return
-    global _alexa_port, _alexa_recipe_names
+    global _alexa_port, _alexa_recipe_names, _voice_device_names
     _alexa_port = server_port
     u = f"http://localhost:{server_port}"
 
@@ -2786,31 +3081,42 @@ def start_fauxmo(server_port: int):
             d.update(use_fake_state=True, initial_state="off")
         return d
 
-    devices = [
-        plug("xbloom", 12340, "/api/alexa/brew", "/api/alexa/stop", state="brew"),
-        plug("Tare Scale", 12341, "/api/alexa/tare", "/api/alexa/tare", fake=True),
-        plug("Wake Coffee Machine", 12342, "/api/alexa/wake", "/api/alexa/wake", fake=True),
-        plug("Coffee Pause", 12343, "/api/alexa/pause", "/api/alexa/resume", state="pause"),
-        plug("Hot Water", 12344, "/api/alexa/water", "/api/alexa/water_stop", state="water"),
-        plug("Coffee Grinder", 12345, "/api/alexa/grind", "/api/alexa/grind_stop", state="grind"),
+    base = [
+        ("coffee", plug("xbloom", 12340, "/api/alexa/brew", "/api/alexa/stop", state="brew")),
+        ("scale", plug("Tare Scale", 12341, "/api/alexa/tare", "/api/alexa/tare", fake=True)),
+        ("wake", plug("Wake Coffee Machine", 12342, "/api/alexa/wake", "/api/alexa/wake", fake=True)),
+        ("pause", plug("Coffee Pause", 12343, "/api/alexa/pause", "/api/alexa/resume", state="pause")),
+        ("water", plug("Hot Water", 12344, "/api/alexa/water", "/api/alexa/water_stop", state="water")),
+        ("grind", plug("Coffee Grinder", 12345, "/api/alexa/grind", "/api/alexa/grind_stop", state="grind")),
         # short names, easy to say: "Alexa, turn on coffee" / "turn on scale" / "turn on grinder"
-        plug("Coffee", 12346, "/api/alexa/brew", "/api/alexa/stop", state="brew"),
-        plug("Scale", 12347, "/api/alexa/tare", "/api/alexa/tare", fake=True),
-        plug("Grinder", 12348, "/api/alexa/grind", "/api/alexa/grind_stop", state="grind"),
-        plug("Coffee Machine", 12349, "/api/alexa/wake", "/api/alexa/wake", fake=True),
+        ("coffee", plug("Coffee", 12346, "/api/alexa/brew", "/api/alexa/stop", state="brew")),
+        ("scale", plug("Scale", 12347, "/api/alexa/tare", "/api/alexa/tare", fake=True)),
+        ("grind", plug("Grinder", 12348, "/api/alexa/grind", "/api/alexa/grind_stop", state="grind")),
+        ("wake", plug("Coffee Machine", 12349, "/api/alexa/wake", "/api/alexa/wake", fake=True)),
     ]
+    devices = [d for key, d in base if voice_device_on(key)]
     # one plug per recipe ("Alexa, turn on Iced V60"), up to 10
     names, seen = [], set()
-    for i, r in enumerate(_all_recipes()):
-        spoken = alexa_name(r.get("name", ""))
-        if not spoken or spoken.lower() in seen or len(names) >= 10:
-            continue
-        seen.add(spoken.lower())
-        names.append(r.get("name", ""))
-        devices.append(plug(spoken, 12350 + len(names) - 1,
-                            f"/api/alexa/brew?recipe={urllib.parse.quote(r.get('name', ''))}", "/api/alexa/stop",
-                            state="brew"))
-    _alexa_recipe_names = names
+    if pro_active():
+        # Pro: the recipes, order and spoken names chosen on the Voice page
+        for i, sl in enumerate(voice_recipe_slots()):
+            if sl["on"] and not sl["problem"] and voice_device_on("coffee"):
+                names.append(sl["name"])
+                devices.append(plug(sl["voice"], 12350 + i,
+                                    f"/api/alexa/brew?recipe={urllib.parse.quote(sl['name'])}", "/api/alexa/stop",
+                                    state="brew"))
+    else:
+        for i, r in enumerate(_all_recipes()):
+            spoken = alexa_name(r.get("name", ""))
+            if not spoken or spoken.lower() in seen or len(names) >= 10:
+                continue
+            seen.add(spoken.lower())
+            names.append(r.get("name", ""))
+            devices.append(plug(spoken, 12350 + len(names) - 1,
+                                f"/api/alexa/brew?recipe={urllib.parse.quote(r.get('name', ''))}", "/api/alexa/stop",
+                                state="brew"))
+    _alexa_recipe_names = [r.get("name") for r in _all_recipes()][:10]
+    _voice_device_names = [d["name"] for d in devices]
 
     config = {
         "FAUXMO": {"ip_address": get_local_ip()},
@@ -2820,7 +3126,16 @@ def start_fauxmo(server_port: int):
     import json, tempfile, subprocess, shutil
     cfg_path = Path(tempfile.gettempdir()) / f"xbloom_fauxmo_{server_port}.json"   # per server, so two copies never stop each other
     cfg_path.write_text(json.dumps(config, indent=2))
+    if os.environ.get("NUQTA_NO_ALEXA"):     # tests: work everything out, start nothing
+        if not _voice.get("enabled", True):
+            _voice_device_names = []
+        return
     fauxmo_bin = shutil.which("fauxmo")
+    if fauxmo_bin and not _voice.get("enabled", True):
+        subprocess.run(["pkill", "-f", f"fauxmo -c {cfg_path}"], check=False)
+        _voice_device_names = []
+        log.info("Voice control is off — Alexa helper stopped")
+        return
     if fauxmo_bin:
         # one fauxmo only: stop any left over from an earlier run (it would hold the Alexa ports)
         subprocess.run(["pkill", "-f", f"fauxmo -c {cfg_path}"], check=False)
@@ -3027,6 +3342,11 @@ def main():
     # Alexa
     app.router.add_post("/api/alexa/{action}", handle_alexa_action)
     app.router.add_get("/api/alexa-state", handle_alexa_state)
+    app.router.add_get("/api/voice", handle_voice_get)
+    app.router.add_post("/api/voice", handle_voice_post)
+    app.router.add_post("/api/voice/confirm", handle_voice_confirm)
+    app.router.add_get("/voice/{action}", handle_voice_shortcut)
+    app.router.add_post("/voice/{action}", handle_voice_shortcut)
     app.router.add_get("/api/brews", handle_brews_get)
     app.router.add_get("/api/brews/curves", handle_brew_curves)
     app.router.add_post("/api/trace", handle_trace)

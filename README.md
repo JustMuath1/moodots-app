@@ -205,6 +205,8 @@ The app is complete and free on your home Wi‑Fi. **Nuqta Pro** unlocks the res
   ratings, water, cost per cup and beans used.
 - **Every theme** — Saudi, Riyadh, Dammam, Al‑Baha, Ramadan and Neon, on top of the four free ones.
 - **Every standby scene** — Dalla and finjan, Palm, Riyadh, Dammam and Al‑Baha.
+- **Voice control page** — voice names for your recipes with Alexa, Siri and NFC shortcuts,
+  safety options and a command log. (Basic Alexa control stays free.)
 - **Feature updates, automatically** — new Pro features arrive on their own.
 - **Nuqta Cloud** (coming soon, included): open Nuqta from anywhere, "coffee ready" alerts on your
   phone, and backup.
