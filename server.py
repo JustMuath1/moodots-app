@@ -3294,8 +3294,8 @@ def matter_restart() -> None:
         return
     _matter_identity()
     env = dict(os.environ, NUQTA_URL=f"http://127.0.0.1:{_alexa_port}",
-               MATTER_STORAGE_PATH=str(Path(__file__).parent / "matter_data"))
-    out = open(ALEXA_LOG, "a")
+               MATTER_STORAGE_PATH=str(Path(__file__).parent / "matter_data"), MATTER_LOG_LEVEL="info")
+    out = open(ALEXA_LOG, "w")          # fresh log each start, so it can't grow without end
     _matter["proc"] = subprocess.Popen([shutil_which("node"), str(MATTER_DIR / "bridge.mjs")],
                                        cwd=str(MATTER_DIR), env=env, stdout=out, stderr=out)
     import atexit
