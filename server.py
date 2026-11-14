@@ -2712,7 +2712,7 @@ def voice_payload() -> dict:
         "pro": pro,
         "enabled": bool(_voice.get("enabled", False)),
         "helper": matter_available(),
-        "matter": {"code": _matter["pairing"].get("manual", ""), "paired": bool(_matter["pairing"].get("commissioned")),
+        "matter": {"code": _matter["pairing"].get("manual", ""), "qr": _matter["pairing"].get("qr", ""), "paired": bool(_matter["pairing"].get("commissioned")),
                    "window": bool(_matter["pairing"].get("window")), "apps": _matter["pairing"].get("fabrics", []),
                    "running": bool(_matter.get("proc") and _matter["proc"].poll() is None)},
         "count": len(_voice_device_names) if _voice.get("enabled", False) else 0,

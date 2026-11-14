@@ -2,6 +2,27 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { LogoMark } from './Logo';
 import { LockMark } from './ProSheet';
 import { PRO_PRICE_SAR, HUB_URL } from '../utils/pro';
+import qrcode from 'qrcode-generator';
+
+// The Matter setup QR code, drawn as dots in the app's style (scannable by Alexa, Apple Home, Google Home).
+function SetupQR({ text, size = 132 }) {
+  if (!text) return null;
+  const q = qrcode(0, 'M');
+  q.addData(text);
+  q.make();
+  const n = q.getModuleCount();
+  const cell = size / (n + 4);
+  const out = [];
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    if (q.isDark(y, x)) out.push(<rect key={`${x}-${y}`} x={(x + 2) * cell} y={(y + 2) * cell} width={cell + 0.3} height={cell + 0.3} />);
+  }
+  return (
+    <svg className="vc-qr" width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Matter setup QR code">
+      <rect width={size} height={size} rx="10" fill="#fff" />
+      <g fill="#111">{out}</g>
+    </svg>
+  );
+}
 
 // Voice control (Pro): Alexa devices, recipe voice names, shortcuts, safety and the log.
 // Design: nuqta-voice-handoff. Basic Alexa status stays free; the rest is locked without Pro.
@@ -21,13 +42,15 @@ const TX = {
     bBrew: (r) => `Brewing ${r || ''}. Any new brew is refused until it ends.`, stop: 'Stop',
     alexa: 'Amazon Alexa', apple: 'Apple Home', google: 'Google Home', connected: 'Connected', notSetUp: 'Not set up', later: 'Coming later',
     alexaHow: 'Works today. Discover devices in the Alexa app, on the same Wi-Fi.',
-    appleHow: 'Pair with the same setup code in the Home app on iPhone. Works with Siri too.',
-    googleHow: 'Pair with the same setup code in the Google Home app.',
+    appleHow: 'Pair with the same setup code in the Home app. Needs an Apple TV or HomePod as home hub.',
+    googleHow: 'Pair with the same setup code in the Google Home app. Needs a Nest speaker, Nest Hub or Google TV Streamer as hub.',
     close: 'Close', ready: 'Ready to pair', pairApple: 'Add Nuqta to Apple Home', pairGoogle: 'Add Nuqta to Google Home',
     openPair: 'Open pairing', pairOpen: 'Pairing is open · 15 min', pairClosed: 'Pairing closed', pairFirst: 'Pair with Alexa first, or pair here directly.',
-    ap1: 'Press “Open pairing” below.', ap2: 'iPhone Home app → + → Add Accessory → More options… → enter the code.', ap3: 'When it warns “Uncertified accessory”, choose Add Anyway.',
+    ap0: 'You need an Apple TV or HomePod set as your home hub (Home app → ⋯ → Home Settings → Home Hubs & Bridges). Without one, the Home app won’t let you select Nuqta.',
+    ap1: 'Press “Open pairing” below.', ap2: 'iPhone Home app → + → Add Accessory → scan the QR code, or More options… → enter the code.', ap3: 'When it warns “Uncertified accessory”, choose Add Anyway.',
     ap4: 'Away from home, Apple Home needs an Apple TV or HomePod.',
-    gp1: 'Press “Open pairing” below.', gp2: 'Google Home app → Devices → + Add → Matter-enabled device → Set up without QR code → enter the code.', gp3: 'Choose a room and finish.',
+    gp0: 'You need a Google hub for Matter: a Nest speaker (Nest Mini, Nest Audio), a Nest Hub, Nest Wifi Pro or a Google TV Streamer. Without one, Google Home stops at “You need a hub”.',
+    gp1: 'Press “Open pairing” below.', gp2: 'Google Home app → Devices → + Add → Matter-enabled device → scan the QR code, or set up without it and enter the code.', gp3: 'Choose a room and finish.',
     gp4: 'If Google says it can’t connect, the test version of Nuqta isn’t allowed in Google Home yet; tell us.',
     pairedApps: (n) => `${n} app${n === 1 ? '' : 's'} paired`,
     rediscover: 'Re-discover devices', rediscovered: 'Devices refreshed. In the Alexa app: Add device → Discover.', setUp: 'Set up',
@@ -92,13 +115,15 @@ const TX = {
     bBrew: (r) => `تحضير جارٍ: ${r || ''}. أي تحضير جديد سيُرفض حتى ينتهي.`, stop: 'إيقاف',
     alexa: 'Amazon Alexa', apple: 'Apple Home', google: 'Google Home', connected: 'متصل', notSetUp: 'غير مُعدّ', later: 'قريباً',
     alexaHow: 'يعمل اليوم. اكتشف الأجهزة من تطبيق Alexa على نفس الواي فاي.',
-    appleHow: 'اقترن بنفس رمز الإعداد في تطبيق Home على iPhone. يعمل مع Siri أيضاً.',
-    googleHow: 'اقترن بنفس رمز الإعداد في تطبيق Google Home.',
+    appleHow: 'اقترن بنفس رمز الإعداد في تطبيق Home. يحتاج Apple TV أو HomePod كمركز للمنزل.',
+    googleHow: 'اقترن بنفس رمز الإعداد في تطبيق Google Home. يحتاج سماعة Nest أو Nest Hub أو Google TV Streamer كمركز.',
     close: 'إغلاق', ready: 'جاهز للاقتران', pairApple: 'أضف نقطة إلى Apple Home', pairGoogle: 'أضف نقطة إلى Google Home',
     openPair: 'افتح الاقتران', pairOpen: 'الاقتران مفتوح · 15 دقيقة', pairClosed: 'الاقتران مغلق', pairFirst: 'اقترن مع Alexa أولاً، أو اقترن هنا مباشرة.',
-    ap1: 'اضغط «افتح الاقتران» بالأسفل.', ap2: 'تطبيق Home على iPhone ← + ← إضافة ملحق ← خيارات أخرى… ← أدخل الرمز.', ap3: 'عند تحذير «ملحق غير معتمد» اختر «إضافة على أي حال».',
+    ap0: 'تحتاج Apple TV أو HomePod مضبوطاً كمركز للمنزل (تطبيق Home ← ⋯ ← إعدادات المنزل ← مراكز المنزل والجسور). بدونه لن يسمح تطبيق Home باختيار نقطة.',
+    ap1: 'اضغط «افتح الاقتران» بالأسفل.', ap2: 'تطبيق Home على iPhone ← + ← إضافة ملحق ← امسح رمز QR، أو خيارات أخرى… ← أدخل الرمز.', ap3: 'عند تحذير «ملحق غير معتمد» اختر «إضافة على أي حال».',
     ap4: 'خارج المنزل يحتاج Apple Home إلى Apple TV أو HomePod.',
-    gp1: 'اضغط «افتح الاقتران» بالأسفل.', gp2: 'تطبيق Google Home ← الأجهزة ← + إضافة ← جهاز يدعم Matter ← الإعداد بدون رمز QR ← أدخل الرمز.', gp3: 'اختر الغرفة وأنهِ الإعداد.',
+    gp0: 'تحتاج مركز Google لـ Matter: سماعة Nest (Nest Mini أو Nest Audio) أو Nest Hub أو Nest Wifi Pro أو Google TV Streamer. بدونه يتوقف Google Home عند «تحتاج إلى مركز».',
+    gp1: 'اضغط «افتح الاقتران» بالأسفل.', gp2: 'تطبيق Google Home ← الأجهزة ← + إضافة ← جهاز يدعم Matter ← امسح رمز QR، أو أكمل بدونه وأدخل الرمز.', gp3: 'اختر الغرفة وأنهِ الإعداد.',
     gp4: 'إن قال Google إنه لا يستطيع الاتصال، فالنسخة التجريبية من نقطة غير مسموحة في Google Home بعد؛ أخبرنا.',
     pairedApps: (n) => `${n} تطبيق مقترن`,
     rediscover: 'إعادة اكتشاف الأجهزة', rediscovered: 'تم تحديث الأجهزة. في تطبيق Alexa: إضافة جهاز ← اكتشاف.', setUp: 'إعداد',
@@ -323,6 +348,7 @@ export default function VoicePage({ lang, machine, tick, onBack, onGetPro, onCon
                 <div><b>{T.pairTitle}</b><span>{T.pairSub}</span></div>
                 <code dir="ltr">{d.matter?.code ? d.matter.code.replace(/^(\d{4})(\d{3})(\d{4})$/, '$1-$2-$3') : T.starting}</code>
                 <span className={`vc-chip ${d.matter?.paired ? 'ok' : 'idle'}`}><i />{d.matter?.paired ? T.paired : T.notPaired}</span>
+                {!d.matter?.paired && <SetupQR text={d.matter?.qr} />}
               </div>
             )}
             {d.needs_discover && d.enabled && (
@@ -515,8 +541,9 @@ export default function VoicePage({ lang, machine, tick, onBack, onGetPro, onCon
               <div><b>{T.pairTitle}</b><span>{(d.matter?.apps || []).length ? T.pairedApps(d.matter.apps.length) : T.pairFirst}</span></div>
               <code dir="ltr">{d.matter?.code ? d.matter.code.replace(/^(\d{4})(\d{3})(\d{4})$/, '$1-$2-$3') : T.starting}</code>
               <span className={`vc-chip ${d.matter?.window || !d.matter?.paired ? 'ok' : 'idle'}`}><i />{d.matter?.window || !d.matter?.paired ? T.pairOpen : T.pairClosed}</span>
+              <SetupQR text={d.matter?.qr} />
             </div>
-            <ol>{(pairApp === 'apple' ? [T.ap1, T.ap2, T.ap3, T.ap4] : [T.gp1, T.gp2, T.gp3, T.gp4]).map((x, i) => <li key={i}><span dir="ltr">{i + 1}</span>{x}</li>)}</ol>
+            <ol>{(pairApp === 'apple' ? [T.ap0, T.ap1, T.ap2, T.ap3] : [T.gp0, T.gp1, T.gp2, T.gp3]).map((x, i) => <li key={i}><span dir="ltr">{i + 1}</span>{x}</li>)}</ol>
             <div className="btn-row">
               <button className="nb nb-secondary" onClick={() => setPairApp(null)}>{T.close}</button>
               <button className="nb nb-primary" disabled={d.matter?.window || !d.matter?.paired} onClick={() => patch({ pair_another: true })}>{T.openPair}</button>
