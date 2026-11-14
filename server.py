@@ -488,7 +488,7 @@ def save_config():
     }
     if machine_chosen:
         cfg["machine"] = preferred_machine
-    CONFIG_FILE.write_text(json.dumps(cfg, indent=2))
+    hub_client._write_private(CONFIG_FILE, json.dumps(cfg, indent=2))
 
 
 async def cloud_login(email: str, password: str) -> dict:
@@ -2596,7 +2596,7 @@ async def handle_hub_request_code(request):
         return web.json_response({"ok": False, "error": "bad_json"}, status=400)
     hub_url = str(body.get("hub_url", "")).strip()
     email = str(body.get("email", "")).strip()
-    if not hub_url or not email:
+    if not email:
         return web.json_response({"ok": False, "error": "missing_fields"}, status=400)
     result = await hub_client.hub.request_code(hub_url, email)
     return web.json_response(result)
@@ -2610,7 +2610,7 @@ async def handle_hub_verify(request):
     hub_url = str(body.get("hub_url", "")).strip()
     email = str(body.get("email", "")).strip()
     code = str(body.get("code", "")).strip()
-    if not hub_url or not email or not code:
+    if not email or not code:
         return web.json_response({"ok": False, "error": "missing_fields"}, status=400)
     result = await hub_client.hub.verify_code(hub_url, email, code)
     if result.get("ok"):
@@ -2936,10 +2936,28 @@ def ensure_single_instance():
     _instance_lock.flush()
 
 
+@web.middleware
+async def same_origin_only(request, handler):
+    """Only the dashboard itself may change things or open the live socket.
+    A browser sends an Origin header on those requests; if it names another
+    site (a web page trying to reach this server behind the user's back),
+    refuse. Requests without Origin (curl, Alexa, scripts) are unaffected."""
+    origin = request.headers.get("Origin")
+    if origin and (request.method not in ("GET", "HEAD", "OPTIONS") or request.path == "/ws"):
+        host = urllib.parse.urlsplit(origin).netloc
+        allowed = {request.host}
+        pub = os.environ.get("NUQTA_PUBLIC_URL", "")
+        if pub:
+            allowed.add(urllib.parse.urlsplit(pub).netloc)
+        if host not in allowed:
+            return web.json_response({"error": "cross_origin"}, status=403)
+    return await handler(request)
+
+
 def main():
     ensure_single_instance()
     port = int(os.environ.get("PORT", 8420))
-    app = web.Application()
+    app = web.Application(middlewares=[same_origin_only])
     app.on_startup.append(on_startup)
     app["dashboard_port"] = port
     app.on_startup.append(start_name_redirect)

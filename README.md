@@ -238,5 +238,10 @@ then run the installer again. With Claude Code, just say **"update Nuqta"**.
 Everything runs on your computer. Nuqta only talks to the internet to sync recipes from your xBloom
 account (if you add it) and, if you sign in to Nuqta Pro, to `hub.nuqtasa.tools`.
 
+## Security
+Nuqta is made for your home network: anyone on your Wi‑Fi can open the dashboard, and there is no
+password. Don't expose port 8420 to the internet (no port forwarding). Your xBloom sign‑in and Nuqta
+account tokens are stored only on your computer, in files only your user can read.
+
 ## License
 MIT — see [LICENSE](LICENSE). Not affiliated with xBloom; "xBloom" is a trademark of its owner.

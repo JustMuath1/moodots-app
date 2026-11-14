@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import socket
 import time
 from pathlib import Path
@@ -19,6 +20,20 @@ import ssl
 import aiohttp
 
 log = logging.getLogger("xbloom")
+
+# The only hub this app talks to. It is fixed here (not taken from the browser
+# or the saved file) so nothing on the network can point the app at another
+# server. NUQTA_HUB_URL overrides it for development.
+HUB_URL = os.environ.get("NUQTA_HUB_URL", "https://hub.nuqtasa.tools").rstrip("/")
+
+
+def _write_private(path: Path, text: str) -> None:
+    """Write a file only this user can read (it holds sign-in tokens)."""
+    path.write_text(text)
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
 
 # python.org's Python on macOS ships without system CA certificates, so plain
 # HTTPS to the hub fails verification there. Use certifi's bundle (the main
@@ -64,7 +79,10 @@ class HubClient:
             return
         try:
             d = json.loads(CONFIG_FILE.read_text())
-            self.hub_url = (d.get("hub_url") or "").rstrip("/")
+            if (d.get("hub_url") or "").rstrip("/") != HUB_URL:
+                log.warning("Saved Nuqta account is for a different server — signed out")
+                return
+            self.hub_url = HUB_URL
             self.email = d.get("email", "")
             self.session_token = d.get("session_token", "")
             self.agent_token = d.get("agent_token", "")
@@ -73,7 +91,7 @@ class HubClient:
 
     def _save(self) -> None:
         try:
-            CONFIG_FILE.write_text(json.dumps({
+            _write_private(CONFIG_FILE, json.dumps({
                 "hub_url": self.hub_url, "email": self.email,
                 "session_token": self.session_token, "agent_token": self.agent_token,
             }))
@@ -85,7 +103,7 @@ class HubClient:
         return bool(self.hub_url and self.agent_token)
 
     async def request_code(self, hub_url: str, email: str) -> dict:
-        hub_url = hub_url.rstrip("/")
+        hub_url = HUB_URL
         try:
             async with session() as http:
                 async with http.post(f"{hub_url}/auth/request-code", json={"email": email},
@@ -99,7 +117,7 @@ class HubClient:
             return {"ok": False, "error": "unreachable"}
 
     async def verify_code(self, hub_url: str, email: str, code: str) -> dict:
-        hub_url = hub_url.rstrip("/")
+        hub_url = HUB_URL
         try:
             async with session() as http:
                 async with http.post(f"{hub_url}/auth/verify", json={
