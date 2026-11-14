@@ -1218,6 +1218,26 @@ html, body, .app-shell, .hero-card, .side-panel, .strip-card, .pour-timeline, .c
   .app-header .conn-pill { font-size: clamp(15px, 0.9vw, 19px); padding: 0 clamp(16px, 1.1vw, 24px); }
   .app-header .theme-pick { font-size: clamp(15px, 0.95vw, 20px); padding: 0 clamp(14px, 1vw, 22px); }
 }
+/* The clock never draws over the buttons: if the row is too narrow the buttons move to a second row. */
+@media (min-width: 768px) {
+  .app-header { flex-wrap: wrap; }
+  .clock-in-header .xb-clock-time { flex: none; }
+}
+/* Narrower screens (incl. 1024×600): the dates go and the buttons get smaller, so the clock still fits on the same line. */
+@media (min-width: 768px) and (max-width: 1279px) {
+  .clock-in-header .xb-clock-dates { display: none; }
+}
+/* the English date ("Saturday, 14 November 2026") is longer than the Arabic one */
+@media (min-width: 768px) and (max-width: 1439px) {
+  .app-shell[dir="ltr"] .clock-in-header .xb-clock-dates { display: none; }
+}
+@media (min-width: 768px) and (max-width: 1179px) {
+  .app-header { --hdr-h: 44px; --hdr-r: 13px; gap: 8px; }
+  .header-actions { gap: 6px; }
+  .app-header .theme-pick { padding: 0 11px; gap: 7px; }
+  .app-header .theme-pick .theme-name { display: none; }
+  .clock-in-header .xb-clock-time { font-size: 30px; padding: 0 10px; }
+}
 
 /* tablet and up: Grind only / Scale only take exactly the Brew button's height, width and text size at every screen size */
 @media (min-width: 768px) {
@@ -1915,6 +1935,9 @@ html, body, .app-shell, .hero-card, .side-panel, .strip-card, .pour-timeline, .c
 .pro-head { display: flex; align-items: center; gap: 10px; }
 .pro-badge { font-family: 'Doto', monospace; font-weight: 900; font-size: 13px; letter-spacing: .12em; color: var(--on-accent); background: var(--accent); border-radius: 6px; padding: 2px 7px; }
 .pro-badge.sm { font-size: 10px; padding: 1px 5px; margin-inline-start: 6px; vertical-align: 2px; }
+/* the badge keeps its own colour and size inside rows that style every span as muted text */
+.pro-badge { color: var(--on-accent) !important; }
+.alert-text span.pro-badge.sm, .modal .alert-text span.pro-badge.sm { font-size: 10px; }
 .pro-price { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .pro-amount { font-family: 'Doto', monospace; font-weight: 900; font-size: 44px; line-height: 1; color: var(--accent); text-shadow: var(--num-glow); }
 .pro-cur { font-size: 18px; font-weight: 700; color: var(--text); }
@@ -2045,7 +2068,7 @@ a.nb { display: inline-flex; align-items: center; justify-content: center; text-
 .vc-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .vc-title { display: flex; align-items: center; gap: 10px; margin-inline-end: auto; min-width: 0; }
 .vc-title h1 { font-size: 20px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 4px; }
-.vc-title span { font-size: 12.5px; color: var(--muted); }
+.vc-title > div > span { font-size: 12.5px; color: var(--muted); }
 .vc-tabs { display: flex; gap: 2px; padding: 3px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; max-width: 100%; }
 .vc-tabs::-webkit-scrollbar { display: none; }
 .vc-tabs button { height: 34px; padding: 0 14px; border-radius: 11px; border: 0; background: transparent; color: var(--muted-2); font: inherit; font-size: 13.5px; font-weight: 600; white-space: nowrap; cursor: pointer; display: inline-flex; align-items: center; }
@@ -2068,7 +2091,7 @@ a.nb { display: inline-flex; align-items: center; justify-content: center; text-
 .vc-st-main span, .vc-st-cell span { font-size: 12px; color: var(--muted); }
 .vc-st-main b { font-size: 16px; }
 .vc-st-icon { color: var(--accent); display: grid; place-items: center; }
-.vc-st-cell { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.vc-st-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; }
 .vc-st-cell b { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .vc-chip { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; border: 1px solid var(--line-2); background: var(--surface-2); color: var(--muted-2); }
@@ -2209,6 +2232,7 @@ a.nb { display: inline-flex; align-items: center; justify-content: center; text-
 .vc-group span { font-weight: 500; color: var(--muted); } .vc-group .vc-link { margin-inline-start: auto; }
 .vc-link.start { align-self: flex-start; padding: 0; }
 .vc-link:disabled { opacity: .4; cursor: default; }
+.modal.vc-fresh { max-height: calc(100dvh - 32px); overflow-y: auto; }
 .vc-fresh ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
 .vc-fresh li { display: flex; gap: 12px; font-size: 14px; line-height: 1.55; color: var(--muted-2); }
 .vc-fresh li span { font-family: 'Doto', monospace; font-weight: 900; font-size: 18px; color: var(--accent); flex: none; }
@@ -2225,3 +2249,28 @@ a.nb { display: inline-flex; align-items: center; justify-content: center; text-
 .vc-pair b { font-size: 14px; } .vc-pair span { font-size: 12.5px; color: var(--muted); }
 .vc-pair code { font-family: 'Doto', monospace; font-weight: 900; font-size: 24px; letter-spacing: .04em; color: var(--accent); }
 .vc-qr { flex: none; display: block; }
+
+/* Standby: the footer (hint + scene bar) sits in the page flow, so the clock, dates, verse and
+   next-brew line can never run under it; the clock block stays centred in the space above it. */
+.standby { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+.standby .sb-footer { position: relative; left: auto; right: auto; bottom: auto; width: 100%; box-sizing: border-box; margin-top: auto; flex: none; z-index: 1; }
+.standby > .sb-art { margin-top: auto; }
+.standby.city { padding-bottom: max(40px, env(safe-area-inset-bottom)); }
+.standby.city .sb-footer { bottom: auto; padding: 0 24px; }
+/* the dot picture gives way on shorter screens (1024×600, laptops) so everything fits */
+.sb-art { width: clamp(150px, min(42vmin, 100vh - 420px), 460px); }
+/* very short screens (800×480 Pi displays): drop the hint and the verse, shrink the picture and the clock */
+@media (max-height: 540px) {
+  .sb-hint, .sb-verse { display: none; }
+  .standby .sb-footer { grid-template-areas: "custom modes brand"; }
+  .standby { gap: 10px; padding-top: 12px; padding-bottom: 12px; }
+  .sb-art { width: clamp(110px, 100vh - 330px, 200px); }
+  .sb-time { font-size: clamp(52px, 14vmin, 90px); }
+  .sb-city { gap: 8px; padding: 6px 24px; }
+  .sb-city-grid, .sb-city-grid.saudi { width: min(92vw, 36vmin); }
+  .standby.city { padding-bottom: 12px; }
+  .standby.city .sb-time { font-size: clamp(44px, 11vmin, 80px); }
+}
+@media (max-height: 540px) and (max-width: 900px) {
+  .standby .sb-footer { grid-template-areas: "modes modes" "custom brand"; }
+}

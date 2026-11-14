@@ -7,7 +7,7 @@ import { THEMES } from '../utils/themes';
 import { VoiceMark } from './VoicePage';
 
 const REMOTE_TX = {
-  ar: { remote: 'عن بُعد', noSignal: 'بلا إنترنت', machineOn: 'المكنة متصلة', unknown: 'المكنة ؟' },
+  ar: { remote: 'عن بُعد', noSignal: 'بلا إنترنت', machineOn: 'الآلة متصلة', unknown: 'الآلة ؟' },
   en: { remote: 'Remote', noSignal: 'No signal', machineOn: 'Machine on', unknown: 'Machine ?' },
 };
 const CLOUD = ['..aaa...', '.aaaaaa.', 'aaaaaaaa', 'aaaaaaaa'];

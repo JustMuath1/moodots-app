@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { LogoMark } from './Logo';
 import { LockMark } from './ProSheet';
 import { PRO_PRICE_SAR, HUB_URL } from '../utils/pro';
@@ -24,13 +25,19 @@ function SetupQR({ text, size = 132 }) {
   );
 }
 
+// Keep English words, spoken phrases and numbers with units the right way round inside Arabic sentences.
+const en = (s) => `⁦${s.replace(/ /g, ' ')}⁩`;    // left-to-right isolate; never split "Google Home" across lines
+const iso = (s) => `⁨${s}⁩`;   // isolate that takes its direction from the text (recipe names)
+// Arabic counting: 1 دقيقة · 2 دقيقتين · 3–10 دقائق · 11+ دقيقة
+const arCount = (n, [one, two, few, many]) => (n === 1 ? one : n === 2 ? two : n <= 10 ? `${n} ${few}` : `${n} ${many}`);
+
 // Voice control (Pro): Alexa devices, recipe voice names, shortcuts, safety and the log.
 // Design: nuqta-voice-handoff. Basic Alexa status stays free; the rest is locked without Pro.
 const TX = {
   en: {
     title: 'Voice control', sub: 'Nuqta · voice commands and shortcuts', back: 'Settings',
     tabs: { overview: 'Overview', devices: 'Devices', recipes: 'Recipes', shortcuts: 'Shortcuts', safety: 'Safety', log: 'Log' },
-    vc: 'Voice control', on: 'On', off: 'Off', seen: 'Devices Alexa can see', last: 'Last command', none: 'None yet',
+    vc: 'Voice control', vcOn: 'On', vcOff: 'Off', on: 'On', off: 'Off', seen: 'Devices Alexa can see', last: 'Last command', none: 'None yet',
     mConnected: 'Machine connected', mOff: 'Machine not connected', mAsleep: 'Machine asleep', mBrewing: 'Brewing',
     bOff: 'Nothing is offered to Alexa yet. Choose your devices first, then send them.', turnOn: 'Choose devices',
     send: (n) => `Send to Alexa · ${n}`, sendNone: 'Choose at least one', stopSend: 'Stop offering', sentHint: 'Sent. Now in the Alexa app: Add device → Discover.',
@@ -41,7 +48,9 @@ const TX = {
     bAsleep: 'The machine is asleep. Wake it, or say "Alexa, turn on coffee machine".', wake: 'Wake',
     bBrew: (r) => `Brewing ${r || ''}. Any new brew is refused until it ends.`, stop: 'Stop',
     alexa: 'Amazon Alexa', apple: 'Apple Home', google: 'Google Home', connected: 'Connected', notSetUp: 'Not set up', later: 'Coming later',
-    alexaHow: 'Works today. Discover devices in the Alexa app, on the same Wi-Fi.',
+    untested: 'Untested',
+    untestedNote: (n) => `We haven’t tested Nuqta with ${n} yet. Nuqta follows the Matter standard, so it should work; tell us if it doesn’t.`,
+    alexaHow: 'Works today. Add Nuqta in the Alexa app with the setup code, on the same Wi-Fi.',
     appleHow: 'Pair with the same setup code in the Home app. Needs an Apple TV or HomePod as home hub.',
     googleHow: 'Pair with the same setup code in the Google Home app. Needs a Nest speaker, Nest Hub or Google TV Streamer as hub.',
     close: 'Close', ready: 'Ready to pair', pairApple: 'Add Nuqta to Apple Home', pairGoogle: 'Add Nuqta to Google Home',
@@ -59,9 +68,9 @@ const TX = {
     changed: 'Recipes changed. Run Discover devices in Alexa again.', done: 'Done',
     defCoffee: 'Default coffee', defSub: 'What “Alexa, turn on coffee” brews', recent: 'Recent commands', logLink: 'Log',
     proTitle: 'Nuqta Pro', proSub: 'A complete voice control centre. One tap to set up, updated for you.',
-    pf: ['A voice name for every recipe', 'Pick your default coffee', 'Siri and NFC shortcuts', 'Safety options and activity log', 'Apple Home and Google Home when they arrive'],
+    pf: ['A voice name for every recipe', 'Pick your default coffee', 'Siri and NFC shortcuts', 'Safety options and activity log', 'Apple Home and Google Home (not tested yet)'],
     price: 'SAR · one-time · for life', getPro: 'Get Nuqta Pro', locked: 'This part is in Nuqta Pro',
-    hSpoken: 'Spoken name', hOn: 'When turned on', hOff: 'When turned off', hState: 'State', momentary: 'Momentary', same: 'Same',
+    hSpoken: 'Spoken name', hOn: 'When turned on', hOff: 'When turned off', hState: 'State', momentary: 'Momentary', same: 'Nothing',
     dev: {
       coffee: ['Coffee', '“Alexa, turn on coffee”', 'Brew the selected recipe', 'Stop the brew'],
       pause: ['Coffee Pause', '“Alexa, turn on coffee pause”', 'Pause the brew', 'Resume'],
@@ -103,74 +112,83 @@ const TX = {
   ar: {
     title: 'التحكم الصوتي', sub: 'نقطة · الأوامر الصوتية والاختصارات', back: 'الإعدادات',
     tabs: { overview: 'نظرة عامة', devices: 'الأجهزة', recipes: 'الوصفات', shortcuts: 'الاختصارات', safety: 'الأمان', log: 'السجل' },
-    vc: 'التحكم الصوتي', on: 'يعمل', off: 'متوقف', seen: 'أجهزة يراها Alexa', last: 'آخر أمر', none: 'لا يوجد بعد',
-    mConnected: 'المكنة متصلة', mOff: 'المكنة غير متصلة', mAsleep: 'المكنة نائمة', mBrewing: 'تحضير جارٍ',
-    bOff: 'لا شيء معروض على Alexa بعد. اختر أجهزتك أولاً ثم أرسلها.', turnOn: 'اختر الأجهزة',
-    send: (n) => `أرسل إلى Alexa · ${n}`, sendNone: 'اختر جهازاً واحداً على الأقل', stopSend: 'إيقاف العرض', sentHint: 'تم الإرسال. الآن في تطبيق Alexa: إضافة جهاز ← اكتشاف.',
-    offOn: 'معروضة على Alexa', offOff: 'غير معروضة بعد',
-    bHelper: 'إضافة الصوت (Matter) غير مثبّتة على هذا الكمبيوتر.', howInstall: 'كيف أثبّتها',
-    helperHow: 'على الكمبيوتر الذي يشغّل نقطة، شغّل مثبّت نقطة مرة أخرى (يحتاج Node.js). ثم أعد تشغيل نقطة.',
-    bDisc: 'المكنة غير متصلة بالبلوتوث. الأوامر الصوتية ستُرفض.', connect: 'اتصال',
-    bAsleep: 'المكنة نائمة. أيقظها أو قل «Alexa, turn on coffee machine».', wake: 'إيقاظ',
-    bBrew: (r) => `تحضير جارٍ: ${r || ''}. أي تحضير جديد سيُرفض حتى ينتهي.`, stop: 'إيقاف',
-    alexa: 'Amazon Alexa', apple: 'Apple Home', google: 'Google Home', connected: 'متصل', notSetUp: 'غير مُعدّ', later: 'قريباً',
-    alexaHow: 'يعمل اليوم. اكتشف الأجهزة من تطبيق Alexa على نفس الواي فاي.',
-    appleHow: 'اقترن بنفس رمز الإعداد في تطبيق Home. يحتاج Apple TV أو HomePod كمركز للمنزل.',
-    googleHow: 'اقترن بنفس رمز الإعداد في تطبيق Google Home. يحتاج سماعة Nest أو Nest Hub أو Google TV Streamer كمركز.',
-    close: 'إغلاق', ready: 'جاهز للاقتران', pairApple: 'أضف نقطة إلى Apple Home', pairGoogle: 'أضف نقطة إلى Google Home',
-    openPair: 'افتح الاقتران', pairOpen: 'الاقتران مفتوح · 15 دقيقة', pairClosed: 'الاقتران مغلق', pairFirst: 'اقترن مع Alexa أولاً، أو اقترن هنا مباشرة.',
-    ap0: 'تحتاج Apple TV أو HomePod مضبوطاً كمركز للمنزل (تطبيق Home ← ⋯ ← إعدادات المنزل ← مراكز المنزل والجسور). بدونه لن يسمح تطبيق Home باختيار نقطة.',
-    ap1: 'اضغط «افتح الاقتران» بالأسفل.', ap2: 'تطبيق Home على iPhone ← + ← إضافة ملحق ← امسح رمز QR، أو خيارات أخرى… ← أدخل الرمز.', ap3: 'عند تحذير «ملحق غير معتمد» اختر «إضافة على أي حال».',
-    ap4: 'خارج المنزل يحتاج Apple Home إلى Apple TV أو HomePod.',
-    gp0: 'تحتاج مركز Google لـ Matter: سماعة Nest (Nest Mini أو Nest Audio) أو Nest Hub أو Nest Wifi Pro أو Google TV Streamer. بدونه يتوقف Google Home عند «تحتاج إلى مركز».',
-    gp1: 'اضغط «افتح الاقتران» بالأسفل.', gp2: 'تطبيق Google Home ← الأجهزة ← + إضافة ← جهاز يدعم Matter ← امسح رمز QR، أو أكمل بدونه وأدخل الرمز.', gp3: 'اختر الغرفة وأنهِ الإعداد.',
-    gp4: 'إن قال Google إنه لا يستطيع الاتصال، فالنسخة التجريبية من نقطة غير مسموحة في Google Home بعد؛ أخبرنا.',
-    pairedApps: (n) => `${n} تطبيق مقترن`,
-    rediscover: 'إعادة اكتشاف الأجهزة', rediscovered: 'تم تحديث الأجهزة. في تطبيق Alexa: إضافة جهاز ← اكتشاف.', setUp: 'إعداد',
-    steps: 'الإعداد في ثلاث خطوات', s1: 'اختر أجهزتك من تبويب الأجهزة، ثم اضغط «أرسل إلى Alexa»', s2: 'تطبيق Alexa: الأجهزة ← + ← إضافة جهاز ← Matter ← أدخل رمز الإعداد أدناه', s3: 'قل: «Alexa, turn on coffee»',
-    pairTitle: 'رمز الإعداد', pairSub: 'أدخله في تطبيق Alexa (يعمل أيضاً في Apple Home و Google Home).', paired: 'تم الاقتران', notPaired: 'لم يُقترن بعد', starting: 'جارٍ التشغيل…',
-    changed: 'تغيّرت الوصفات. شغّل اكتشاف الأجهزة في Alexa مرة أخرى.', done: 'تم',
-    defCoffee: 'القهوة الافتراضية', defSub: 'ما يحضّره «Alexa, turn on coffee»', recent: 'آخر الأوامر', logLink: 'السجل',
-    proTitle: 'نقطة برو', proSub: 'مركز تحكم صوتي متكامل. إعداد بضغطة، ويتحدّث تلقائياً.',
-    pf: ['اسم صوتي لكل وصفة', 'اختر قهوتك الافتراضية', 'اختصارات Siri و NFC', 'خيارات الأمان وسجل النشاط', 'Apple Home و Google Home عند وصولهما'],
-    price: 'ر.س · مرة واحدة · مدى الحياة', getPro: 'احصل على نقطة برو', locked: 'هذا الجزء في نقطة برو',
-    hSpoken: 'الاسم المنطوق', hOn: 'عند التشغيل', hOff: 'عند الإيقاف', hState: 'الحالة', momentary: 'لحظي', same: 'نفسه',
+    vc: 'التحكم الصوتي', vcOn: 'مفعّل', vcOff: 'متوقف', on: 'يعمل', off: 'متوقف', seen: 'أجهزة تراها أليكسا', last: 'آخر أمر', none: 'لا شيء بعد',
+    mConnected: 'الآلة متصلة', mOff: 'الآلة غير متصلة', mAsleep: 'الآلة في وضع السكون', mBrewing: 'جارٍ التحضير',
+    bOff: 'لم يُرسَل أي جهاز إلى أليكسا بعد. اختر أجهزتك أولاً ثم أرسلها.', turnOn: 'اختيار الأجهزة',
+    send: (n) => `أرسل إلى أليكسا · ${n}`, sendNone: 'اختر جهازاً واحداً على الأقل', stopSend: 'إيقاف الإرسال', sentHint: 'تم الإرسال. الآن في تطبيق أليكسا: إضافة جهاز ← اكتشاف الأجهزة.',
+    offOn: 'متاحة لأليكسا', offOff: 'غير متاحة بعد',
+    bHelper: `مكوّن الصوت (${en('Matter')}) غير مثبّت على هذا الكمبيوتر.`, howInstall: 'طريقة التثبيت',
+    helperHow: `على الكمبيوتر الذي يعمل عليه نقطة، شغّل مثبّت نقطة مرة أخرى (يحتاج ${en('Node.js')})، ثم أعد تشغيل نقطة.`,
+    bDisc: 'الآلة غير متصلة عبر البلوتوث، لذلك ستُرفض الأوامر الصوتية.', connect: 'اتصال',
+    bAsleep: `الآلة في وضع السكون. أيقظها، أو قل: «${en('Alexa, turn on coffee machine')}».`, wake: 'إيقاظ',
+    bBrew: (r) => `جارٍ التحضير${r ? `: ${iso(r)}` : ''}. سيُرفض أي تحضير جديد حتى ينتهي.`, stop: 'إيقاف',
+    alexa: 'Amazon Alexa', apple: 'Apple Home', google: 'Google Home', connected: 'متصل', notSetUp: 'لم يُعدّ بعد', later: 'قريباً',
+    untested: 'لم يُختبر بعد',
+    untestedNote: (n) => `لم نختبر نقطة مع ${en(n)} بعد. نقطة تتبع معيار ${en('Matter')} فيُفترض أن تعمل، وأخبرنا إن لم تعمل.`,
+    alexaHow: 'تعمل الآن. أضف نقطة في تطبيق أليكسا برمز الإعداد، على نفس شبكة الواي فاي.',
+    appleHow: `يُقترن بنفس رمز الإعداد في تطبيق «المنزل». يتطلب ${en('Apple TV')} أو ${en('HomePod')} مركزاً للمنزل.`,
+    googleHow: `يُقترن بنفس رمز الإعداد في تطبيق ${en('Google Home')}. يتطلب مركزاً من ${en('Google')}: سماعة ${en('Nest')} أو ${en('Nest Hub')} أو ${en('Google TV Streamer')}.`,
+    close: 'إغلاق', ready: 'جاهز للاقتران', pairApple: 'إضافة نقطة إلى Apple Home', pairGoogle: 'إضافة نقطة إلى Google Home',
+    openPair: 'فتح الاقتران', pairOpen: 'الاقتران مفتوح · 15 دقيقة', pairClosed: 'الاقتران مغلق', pairFirst: 'اقترن مع أليكسا أولاً، أو اقترن هنا مباشرة.',
+    ap0: `تحتاج ${en('Apple TV')} أو ${en('HomePod')} مضبوطاً مركزاً للمنزل (تطبيق المنزل ← ⋯ ← إعدادات المنزل ← مراكز المنزل والجسور). بدونه لن يسمح التطبيق باختيار نقطة.`,
+    ap1: 'اضغط «فتح الاقتران» في الأسفل.',
+    ap2: `في ${en('iPhone')} افتح تطبيق المنزل ← + ← إضافة ملحق، ثم امسح رمز ${en('QR')}، أو اختر «خيارات أخرى…» وأدخل الرمز.`,
+    ap3: 'عند ظهور تحذير «ملحق غير معتمد» اختر «الإضافة على أي حال».',
+    ap4: `خارج المنزل يحتاج ${en('Apple Home')} إلى ${en('Apple TV')} أو ${en('HomePod')}.`,
+    gp0: `تحتاج مركزاً من ${en('Google')} يدعم ${en('Matter')}: سماعة ${en('Nest')} (مثل ${en('Nest Mini')} أو ${en('Nest Audio')}) أو ${en('Nest Hub')} أو ${en('Nest Wifi Pro')} أو ${en('Google TV Streamer')}. بدونه يتوقف ${en('Google Home')} عند رسالة «تحتاج إلى مركز».`,
+    gp1: 'اضغط «فتح الاقتران» في الأسفل.',
+    gp2: `في تطبيق ${en('Google Home')}: الأجهزة ← + إضافة ← جهاز يدعم ${en('Matter')}، ثم امسح رمز ${en('QR')}، أو تابع بدونه وأدخل الرمز.`,
+    gp3: 'اختر الغرفة وأكمل الإعداد.',
+    gp4: `إذا ظهر أن ${en('Google')} لا يستطيع الاتصال، فنسخة نقطة التجريبية غير مسموح بها في ${en('Google Home')} بعد. أخبرنا بذلك.`,
+    pairedApps: (n) => arCount(n, ['تطبيق واحد مقترن', 'تطبيقان مقترنان', 'تطبيقات مقترنة', 'تطبيقاً مقترناً']),
+    rediscover: 'إعادة اكتشاف الأجهزة', rediscovered: 'تم تحديث الأجهزة. في تطبيق أليكسا: إضافة جهاز ← اكتشاف الأجهزة.', setUp: 'إعداد',
+    steps: 'الإعداد في ثلاث خطوات', s1: 'اختر أجهزتك من تبويب «الأجهزة»، ثم اضغط «أرسل إلى أليكسا».',
+    s2: `في تطبيق أليكسا: الأجهزة ← + ← إضافة جهاز ← ${en('Matter')}، ثم أدخل رمز الإعداد الظاهر في الأسفل.`,
+    s3: `قل: «${en('Alexa, turn on coffee')}»`,
+    pairTitle: 'رمز الإعداد', pairSub: `أدخله في تطبيق أليكسا، ويعمل أيضاً مع ${en('Apple Home')} و ${en('Google Home')}.`, paired: 'تم الاقتران', notPaired: 'لم يتم الاقتران بعد', starting: 'جارٍ التشغيل…',
+    changed: 'تغيّرت الوصفات. شغّل «اكتشاف الأجهزة» في أليكسا مرة أخرى.', done: 'تم',
+    defCoffee: 'القهوة الافتراضية', defSub: `ما يُحضَّر عند قول «${en('Alexa, turn on coffee')}»`, recent: 'آخر الأوامر', logLink: 'السجل',
+    proTitle: 'نقطة برو', proSub: 'مركز متكامل للتحكم الصوتي، يُعدّ بلمسة ويتحدّث تلقائياً.',
+    pf: ['اسم صوتي لكل وصفة', 'اختيار قهوتك الافتراضية', `اختصارات ${en('Siri')} و ${en('NFC')}`, 'خيارات الأمان وسجل الأوامر', `${en('Apple Home')} و ${en('Google Home')} (لم يُختبرا بعد)`],
+    price: 'ر.س · مرة واحدة · مدى الحياة', getPro: 'احصل على نقطة برو', locked: 'هذا القسم ضمن نقطة برو',
+    hSpoken: 'الاسم المنطوق', hOn: 'عند التشغيل', hOff: 'عند الإيقاف', hState: 'الحالة', momentary: 'لحظي', same: 'لا شيء',
     dev: {
       coffee: ['Coffee', '«Alexa, turn on coffee»', 'تحضير الوصفة المختارة', 'إيقاف التحضير'],
-      pause: ['Coffee Pause', '«Alexa, turn on coffee pause»', 'إيقاف مؤقت للتحضير', 'متابعة'],
-      water: ['Hot Water', '«Alexa, turn on hot water»', (s) => `صبّ ${s.water_ml} مل عند ${s.water_temp}°`, 'إيقاف'],
-      grind: ['Grinder', '«Alexa, turn on grinder»', (s) => `بدء الطحن، يتوقف بعد ${s.grind_s} ث`, 'إيقاف'],
+      pause: ['Coffee Pause', '«Alexa, turn on coffee pause»', 'إيقاف التحضير مؤقتاً', 'استئناف التحضير'],
+      water: ['Hot Water', '«Alexa, turn on hot water»', (s) => `صبّ ${s.water_ml} مل بحرارة ${en(`${s.water_temp}°`)}`, 'إيقاف'],
+      grind: ['Grinder', '«Alexa, turn on grinder»', (s) => `بدء الطحن، ويتوقف بعد ${s.grind_s} ث`, 'إيقاف'],
       scale: ['Scale', '«Alexa, turn on scale»', 'تصفير الميزان', null],
-      wake: ['Coffee Machine', '«Alexa, turn on coffee machine»', 'إيقاظ المكنة', null],
+      wake: ['Coffee Machine', '«Alexa, turn on coffee machine»', 'إيقاظ الآلة', null],
     },
-    chooseTitle: 'اختر ما يصل إلى Alexa', chooseSub: 'لا يُرسل إلى Alexa إلا ما تفعّله هنا. اختر أولاً، ثم شغّل الاكتشاف في تطبيق Alexa.',
-    gFunctions: 'المكنة', gRecipes: 'الوصفات', brewIt: (n) => `تحضير ${n}`, nameFirst: 'أعطها اسماً منطوقاً أولاً', editNames: 'الأسماء والترتيب',
-    chosen: (n) => `${n} مختارة`, sendHint: 'تم التغيير. في تطبيق Alexa: إضافة جهاز ← اكتشاف.',
-    fresh: 'ابدأ من جديد', freshTitle: 'احذف كل شيء من Alexa وأعد الإعداد',
-    fresh1: 'اضغط «إعادة ضبط» بالأسفل. تأخذ كل أجهزة نقطة هوية جديدة، فتتوقف القديمة في Alexa عن الاستجابة.',
-    fresh2: 'في تطبيق Alexa افتح الأجهزة واحذف أجهزة نقطة القديمة. تظهر بعبارة «الجهاز لا يستجيب».',
-    fresh3: 'اختر ما تريده من تبويب الأجهزة، ثم في تطبيق Alexa: إضافة جهاز ← اكتشاف.',
-    freshBtn: 'إعادة ضبط الأجهزة', freshDone: 'تمت إعادة الضبط. الأجهزة القديمة لم تعد تستجيب. احذفها من تطبيق Alexa ثم شغّل الاكتشاف.', cancel: 'إلغاء',
-    chk: 'فحص الاتصال', chkSub: 'مباشر. يوضّح إلى أين يصل Alexa.',
-    chk1: 'تم الاقتران مع Alexa', chk1h: 'أضف نقطة في تطبيق Alexa برمز الإعداد.',
-    chk2: 'فحص Alexa أحد الأجهزة', chk2h: 'افتح الأجهزة في تطبيق Alexa واسحب للتحديث.',
-    chk3: 'أرسل Alexa أمراً', chk3h: 'اضغط جهازاً في تطبيق Alexa، أو قل «Alexa, turn on coffee machine».',
-    notYet: 'ليس بعد', ago: (s) => (s < 60 ? `قبل ${s} ث` : s < 3600 ? `قبل ${Math.floor(s / 60)} د` : `قبل ${Math.floor(s / 3600)} س`),
-    sending: 'ما يُعرض على Alexa:',
+    chooseTitle: 'اختر ما يصل إلى أليكسا', chooseSub: 'لا يصل إلى أليكسا إلا ما تفعّله هنا. اختر أولاً، ثم شغّل «اكتشاف الأجهزة» في تطبيق أليكسا.',
+    gFunctions: 'الآلة', gRecipes: 'الوصفات', brewIt: (n) => `تحضير ${iso(n)}`, nameFirst: 'أعطها اسماً منطوقاً أولاً', editNames: 'الأسماء والترتيب',
+    chosen: (n) => `المختار: ${n}`, sendHint: 'تم التغيير. في تطبيق أليكسا: إضافة جهاز ← اكتشاف الأجهزة.',
+    fresh: 'البدء من جديد', freshTitle: 'حذف كل شيء من أليكسا وإعادة الإعداد',
+    fresh1: 'اضغط «إعادة ضبط الأجهزة» في الأسفل. ستأخذ كل أجهزة نقطة هوية جديدة، فتتوقف القديمة في أليكسا عن الاستجابة.',
+    fresh2: 'في تطبيق أليكسا افتح «الأجهزة» واحذف أجهزة نقطة القديمة، وستظهر بعبارة «الجهاز لا يستجيب».',
+    fresh3: 'اختر ما تريده من تبويب «الأجهزة»، ثم في تطبيق أليكسا: إضافة جهاز ← اكتشاف الأجهزة.',
+    freshBtn: 'إعادة ضبط الأجهزة', freshDone: 'تمت إعادة الضبط، ولن تستجيب الأجهزة القديمة. احذفها من تطبيق أليكسا ثم شغّل الاكتشاف.', cancel: 'إلغاء',
+    chk: 'فحص الاتصال', chkSub: 'مباشر، يوضّح إلى أي مرحلة وصلت أليكسا.',
+    chk1: 'تم الاقتران مع أليكسا', chk1h: 'أضف نقطة في تطبيق أليكسا برمز الإعداد.',
+    chk2: 'فحصت أليكسا أحد الأجهزة', chk2h: 'افتح «الأجهزة» في تطبيق أليكسا واسحب للأسفل للتحديث.',
+    chk3: 'أرسلت أليكسا أمراً', chk3h: `اضغط على جهاز في تطبيق أليكسا، أو قل: «${en('Alexa, turn on coffee machine')}».`,
+    notYet: 'ليس بعد',
+    ago: (s) => (s < 60 ? 'قبل لحظات' : s < 3600 ? `قبل ${arCount(Math.floor(s / 60), ['دقيقة', 'دقيقتين', 'دقائق', 'دقيقة'])}` : `قبل ${arCount(Math.floor(s / 3600), ['ساعة', 'ساعتين', 'ساعات', 'ساعة'])}`),
+    sending: 'المتاح لأليكسا:',
     recCmds: 'أوامر الوصفات', enabledOf: (a) => `${a} من 10 مفعّلة`, recLink: 'الوصفات',
-    recTitle: 'الأوامر الصوتية للوصفات', of10: 'من 10', star: '★ = القهوة الافتراضية', typeName: 'اكتب اسماً بحروف إنجليزية',
-    pArabic: 'الاسم العربي قد لا يُنطق', pEmoji: 'الرموز لا تُنطق', pEmpty: 'يحتاج اسماً منطوقاً', pDup: 'الاسم مستخدم',
-    emptySlot: 'خانة فارغة · تُملأ من وصفاتك', noRec: 'لا توجد وصفات بعد', noRecSub: 'أضف وصفة لتظهر هنا كأمر صوتي يمكنك تسميته.', addRec: 'إضافة وصفة',
-    up: 'تحريك للأعلى', down: 'تحريك للأسفل', makeDefault: 'اجعلها الافتراضية',
-    scHint: 'الصق العنوان في اختصارات Apple أو Siri أو بطاقة NFC أو Home Assistant. يعمل على نفس الواي فاي فقط.', copy: 'نسخ', copied: 'تم النسخ',
-    sc: { brew: 'تحضير', stop: 'إيقاف', pause: 'إيقاف مؤقت', tare: 'تصفير الميزان', wake: 'إيقاظ المكنة', 'hot-water': 'ماء ساخن', grind: 'طحن' },
-    safety: 'خيارات الأمان', ask: 'اسألني على اللوحة قبل بدء تحضير صوتي', askSub: 'يعرض «هل الكوب في مكانه؟» ويحضّر بعد موافقتك.',
-    grindS: 'إيقاف الطحن تلقائياً بعد', grindSub: 'يحمي المطحنة إن نسيت إيقافها.',
-    wMl: 'كمية الماء الساخن', wMlSub: 'ما يصبّه «Hot Water».', wT: 'حرارة الماء الساخن', wTSub: 'بالدرجة المئوية.', s: 'ث', ml: 'مل',
-    know: 'للعلم', knowText: 'الأوامر الصوتية لا تُؤكَّد بالصوت: بلا كوب في مكانه سيحضّر. ولا يبدأ تحضير أثناء تحضير آخر.',
-    src: { alexa: 'Alexa', shortcut: 'اختصار' }, ok: 'تم', refused: 'رُفض', noLog: 'لا توجد أوامر بعد. تظهر هنا عندما يرسلها Alexa أو اختصار.',
-    act: { brew: (r) => `تحضير ${r || ''}`.trim(), stop: () => 'إيقاف', pause: () => 'إيقاف مؤقت', resume: () => 'متابعة', water: () => 'ماء ساخن', water_stop: () => 'إيقاف الماء الساخن', grind: () => 'طحن', grind_stop: () => 'إيقاف الطحن', tare: () => 'تصفير الميزان', wake: () => 'إيقاظ المكنة' },
-    why: { brew_running: 'تحضير جارٍ بالفعل', not_connected: 'المكنة غير متصلة', voice_off: 'التحكم الصوتي متوقف', device_off: 'الجهاز موقوف', cancelled: 'أُلغي من اللوحة', no_recipe: 'لا توجد وصفة' },
+    recTitle: 'الأوامر الصوتية للوصفات', of10: 'من 10', star: '★ = القهوة الافتراضية', typeName: 'اكتب الاسم بحروف إنجليزية',
+    pArabic: 'قد لا تتعرّف أليكسا على الاسم العربي', pEmoji: 'لا يمكن نطق الرموز التعبيرية', pEmpty: 'يحتاج اسماً منطوقاً', pDup: 'الاسم مستخدم من قبل',
+    emptySlot: 'خانة فارغة · تُملأ من وصفاتك', noRec: 'لا توجد وصفات بعد', noRecSub: 'أضف وصفة لتظهر هنا أمراً صوتياً يمكنك تسميته.', addRec: 'إضافة وصفة',
+    up: 'نقل للأعلى', down: 'نقل للأسفل', makeDefault: 'تعيينها افتراضية',
+    scHint: `الصق الرابط في تطبيق «الاختصارات» أو ${en('Siri')} أو بطاقة ${en('NFC')} أو ${en('Home Assistant')}. يعمل على نفس شبكة الواي فاي فقط.`, copy: 'نسخ', copied: 'تم النسخ',
+    sc: { brew: 'تحضير', stop: 'إيقاف', pause: 'إيقاف مؤقت', tare: 'تصفير الميزان', wake: 'إيقاظ الآلة', 'hot-water': 'ماء ساخن', grind: 'طحن' },
+    safety: 'خيارات الأمان', ask: 'اسألني على الشاشة قبل بدء التحضير بالصوت', askSub: 'تظهر رسالة «هل الكوب في مكانه؟» ولا يبدأ التحضير إلا بعد موافقتك.',
+    grindS: 'إيقاف الطحن تلقائياً بعد', grindSub: 'يحمي المطحنة إذا نسيت إيقافها.',
+    wMl: 'كمية الماء الساخن', wMlSub: `الكمية التي يصبّها أمر «${en('Hot Water')}».`, wT: 'حرارة الماء الساخن', wTSub: 'بالدرجة المئوية.', s: 'ث', ml: 'مل',
+    know: 'معلومة مهمة', knowText: 'لا تطلب الأوامر الصوتية تأكيداً بالصوت: سيبدأ التحضير حتى لو لم يكن الكوب في مكانه. ولا يبدأ تحضير أثناء تحضير آخر.',
+    src: { alexa: 'أليكسا', shortcut: 'اختصار' }, ok: 'تم', refused: 'مرفوض', noLog: 'لا توجد أوامر بعد. ستظهر هنا عندما ترسلها أليكسا أو أحد الاختصارات.',
+    act: { brew: (r) => (r ? `تحضير ${iso(r)}` : 'تحضير'), stop: () => 'إيقاف', pause: () => 'إيقاف مؤقت', resume: () => 'استئناف', water: () => 'ماء ساخن', water_stop: () => 'إيقاف الماء الساخن', grind: () => 'طحن', grind_stop: () => 'إيقاف الطحن', tare: () => 'تصفير الميزان', wake: () => 'إيقاظ الآلة' },
+    why: { brew_running: 'يوجد تحضير جارٍ', not_connected: 'الآلة غير متصلة', voice_off: 'التحكم الصوتي متوقف', device_off: 'هذا الجهاز غير مفعّل', cancelled: 'أُلغي من الشاشة', no_recipe: 'لا توجد وصفة' },
     today: 'اليوم', yest: 'أمس',
   },
 };
@@ -216,7 +234,9 @@ function Stepper({ value, unit, min, max, step, onChange }) {
   return (
     <div className="vc-stepper">
       <button onClick={() => onChange(Math.max(min, value - step))} disabled={value <= min} aria-label="−">−</button>
-      <span><b dir="ltr">{value}</b>{unit && <i>{unit}</i>}</span>
+      {unit === '°'
+        ? <span><b dir="ltr">{value}°</b></span>
+        : <span><b dir="ltr">{value}</b>{unit && <i>{unit}</i>}</span>}
       <button onClick={() => onChange(Math.min(max, value + step))} disabled={value >= max} aria-label="+">+</button>
     </div>
   );
@@ -305,8 +325,8 @@ export default function VoicePage({ lang, machine, tick, onBack, onGetPro, onCon
         <div className="vc-main">
           <div className="vc-platforms">
             {[['alexa', 'A', d.enabled && d.helper ? 'ok' : 'idle', d.enabled && d.helper ? T.connected : T.notSetUp, T.alexaHow, false],
-              ['apple', 'H', d.matter?.running ? 'ok' : 'idle', d.matter?.running ? T.ready : T.notSetUp, T.appleHow, 'pair'],
-              ['google', 'G', d.matter?.running ? 'ok' : 'idle', d.matter?.running ? T.ready : T.notSetUp, T.googleHow, 'pair']].map(([k, letter, st, stText, how, soon]) => (
+              ['apple', 'H', 'warn', T.untested, T.appleHow, 'pair'],
+              ['google', 'G', 'warn', T.untested, T.googleHow, 'pair']].map(([k, letter, st, stText, how, soon]) => (
               <div key={k} className={`vc-card vc-platform${soon ? ' soon' : ''}`}>
                 <div className="vc-plat-head">
                   <span className="vc-logo">{letter}</span>
@@ -503,6 +523,8 @@ export default function VoicePage({ lang, machine, tick, onBack, onGetPro, onCon
   }
 
   const lockedTab = !pro && tab !== 'overview';
+  // sheets open above the top bar, like every other sheet in the app (the page itself sits under it)
+  const sheet = (el) => createPortal(el, document.querySelector('.app-shell') || document.body);
 
   return (
     <div className="vc-page" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
@@ -522,7 +544,7 @@ export default function VoicePage({ lang, machine, tick, onBack, onGetPro, onCon
       <div className={`vc-card vc-status${d.enabled ? '' : ' dim'}`}>
         <div className="vc-st-main">
           <span className="vc-st-icon"><VoiceMark size={30} /></span>
-          <div><span>{T.vc}</span><b>{d.enabled ? T.on : T.off}</b></div>
+          <div><span>{T.vc}</span><b>{d.enabled ? T.vcOn : T.vcOff}</b></div>
           <Switch on={d.enabled} label={T.vc} onChange={(v) => (v && picked === 0 ? setTab('devices') : patch({ enabled: v }))} />
         </div>
         <div className="vc-st-cell"><span>{T.seen}</span><b className="vc-num" dir="ltr">{d.count}</b></div>
@@ -533,10 +555,11 @@ export default function VoicePage({ lang, machine, tick, onBack, onGetPro, onCon
         <div className={`vc-banner ${banner.cls}`}><span>{banner.text}</span>{banner.btn && <button className="nb nb-secondary nb-sm" onClick={banner.act}>{banner.btn}</button>}</div>
       )}
 
-      {pairApp && (
-        <div className="modal-overlay" onClick={() => setPairApp(null)}>
+      {pairApp && sheet(
+        <div className="modal-overlay" dir={lang === 'ar' ? 'rtl' : 'ltr'} onClick={() => setPairApp(null)}>
           <div className="modal sheet-form vc-fresh" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
             <div className="modal-title">{pairApp === 'apple' ? T.pairApple : T.pairGoogle}</div>
+            <div className="vc-banner warn inline"><span>{T.untestedNote(pairApp === 'apple' ? 'Apple Home' : 'Google Home')}</span></div>
             <div className="vc-pair">
               <div><b>{T.pairTitle}</b><span>{(d.matter?.apps || []).length ? T.pairedApps(d.matter.apps.length) : T.pairFirst}</span></div>
               <code dir="ltr">{d.matter?.code ? d.matter.code.replace(/^(\d{4})(\d{3})(\d{4})$/, '$1-$2-$3') : T.starting}</code>
@@ -552,8 +575,8 @@ export default function VoicePage({ lang, machine, tick, onBack, onGetPro, onCon
         </div>
       )}
 
-      {fresh && (
-        <div className="modal-overlay" onClick={() => setFresh(false)}>
+      {fresh && sheet(
+        <div className="modal-overlay" dir={lang === 'ar' ? 'rtl' : 'ltr'} onClick={() => setFresh(false)}>
           <div className="modal sheet-form vc-fresh" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
             <div className="modal-title">{T.freshTitle}</div>
             <ol>{[T.fresh1, T.fresh2, T.fresh3].map((x, i) => <li key={i}><span dir="ltr">{i + 1}</span>{x}</li>)}</ol>

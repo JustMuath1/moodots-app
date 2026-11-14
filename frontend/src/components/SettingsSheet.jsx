@@ -41,7 +41,7 @@ export default function SettingsSheet({ lang, fullscreen, onToggleLang, onRestar
           <>
             <div className="alert-sep" />
             <div className="alert-row">
-              <div className="alert-text"><b>{lang === 'ar' ? 'التحكم الصوتي' : 'Voice control'} <span className="pro-badge sm">PRO</span></b><span>{lang === 'ar' ? 'Alexa · اختصارات · الأمان' : 'Alexa · shortcuts · safety'}</span></div>
+              <div className="alert-text"><b>{lang === 'ar' ? 'التحكم الصوتي' : 'Voice control'} <span className="pro-badge sm">PRO</span></b><span>{lang === 'ar' ? 'أليكسا · الاختصارات · الأمان' : 'Alexa · shortcuts · safety'}</span></div>
               <button className="nb nb-secondary nb-sm" onClick={() => { onClose(); onOpenVoice(); }}>{T.cloudOpen}</button>
             </div>
           </>

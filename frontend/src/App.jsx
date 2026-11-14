@@ -612,11 +612,11 @@ export default function App() {
   const voiceActionRef = useRef(null);
   voiceActionRef.current = (msg) => {
     const L = langRef.current;
-    const who = msg.source === 'shortcut' ? (L === 'ar' ? 'اختصار' : 'Shortcut') : 'Alexa';
+    const who = msg.source === 'shortcut' ? (L === 'ar' ? 'اختصار' : 'Shortcut') : (L === 'ar' ? 'أليكسا' : 'Alexa');
     lastActivityRef.current = Date.now();
     setStandby(false);
     if (msg.refused) {
-      const why = { brew_running: L === 'ar' ? 'يوجد تحضير جارٍ' : 'a brew is already running', not_connected: L === 'ar' ? 'المكنة غير متصلة' : 'the machine is not connected' }[msg.refused];
+      const why = { brew_running: L === 'ar' ? 'يوجد تحضير جارٍ' : 'a brew is already running', not_connected: L === 'ar' ? 'الآلة غير متصلة' : 'the machine is not connected' }[msg.refused];
       showToast(`${who}: ${L === 'ar' ? 'رُفض الأمر' : 'command refused'}${why ? ` — ${why}` : ''}`, 'warning');
       return;
     }
@@ -628,12 +628,12 @@ export default function App() {
         const i = msg.recipe ? recipes.findIndex((r) => r.name === msg.recipe) : -1;
         if (i >= 0) setSelectedRecipe(i);
         if (page !== 'home') goPage('home');
-        say(`تحضير ${msg.recipe || ''}`, `brewing ${msg.recipe || ''}`);
+        say(msg.recipe ? `تحضير \u2068${msg.recipe}\u2069` : 'تحضير', `brewing ${msg.recipe || ''}`);
         break;
       }
       case 'stop': say('إيقاف التحضير', 'brew stopped'); break;
       case 'pause': say('إيقاف مؤقت', 'paused'); break;
-      case 'resume': say('متابعة', 'resumed'); break;
+      case 'resume': say('استئناف التحضير', 'resumed'); break;
       case 'water':
         setScale(null); setGrindMode(null);
         setWaterMode({ temp: S.water_temp || 93, vol: S.water_ml || 200, pat: 'spiral', running: true, heating: true,
@@ -652,7 +652,7 @@ export default function App() {
         break;
       case 'grind_stop': setGrindMode(null); setFrame(0); say('إيقاف الطحن', 'grinder stopped'); break;
       case 'tare': say('تم تصفير الميزان', 'scale zeroed'); break;
-      case 'wake': say('إيقاظ المكنة', 'waking the machine'); break;
+      case 'wake': say('إيقاظ الآلة', 'waking the machine'); break;
       default: break;
     }
   };
@@ -1369,7 +1369,7 @@ export default function App() {
               <span dir="auto">{recipes[selectedRecipe]?.name}</span>
             </div>
             <h3>{lang === 'ar' ? 'هل الكوب في مكانه؟' : 'Is your cup in place?'}</h3>
-            <p>{lang === 'ar' ? 'أنت عن بُعد ولا يمكنك رؤية المكنة. سيبدأ التحضير الآن.' : "You're away and can't see the machine. Brewing starts right now."}</p>
+            <p>{lang === 'ar' ? 'أنت عن بُعد ولا يمكنك رؤية الآلة. سيبدأ التحضير الآن.' : "You're away and can't see the machine. Brewing starts right now."}</p>
             <div className="cup-btns">
               <button className="nb nb-primary" onClick={() => { setCupCheck(false); doStartBrew(); }}>{lang === 'ar' ? 'نعم، ابدأ' : 'Yes, start'}</button>
               <button className="nb nb-secondary" onClick={() => setCupCheck(false)}>{lang === 'ar' ? 'إلغاء' : 'Cancel'}</button>
