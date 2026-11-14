@@ -73,8 +73,8 @@ Then confirm it's up: `curl -s localhost:8420/api/state` (or open http://localho
 - **Nuqta Pro** (49 SAR once, for life) unlocks brew analytics, every theme and every standby scene;
   the free app has 4 themes and 3 standby scenes. They get it at https://hub.nuqtasa.tools, then in
   the app: **Settings → Nuqta Pro** → sign in with the same email (a 6-digit code arrives by email).
-  Nuqta Cloud (remote access, phone alerts) is coming soon and included with Pro — don't promise it
-  works today.
+  Nuqta Cloud (remote access at hub.nuqtasa.tools/app, phone alerts) is included with Pro and works
+  today; backup is not available.
 
 ## Updating
 macOS: `zsh nuqta-update.command` (pulls, updates packages, rebuilds, restarts). Others: `git pull`,

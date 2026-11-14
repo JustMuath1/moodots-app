@@ -14,8 +14,7 @@ const TX = {
     f6: 'التحكم الصوتي', f6d: 'أسماء صوتية لوصفاتك مع أليكسا، واختصارات Siri و NFC، وخيارات الأمان، وسجل الأوامر.',
     f7: 'إشعارات الجهاز', f7d: 'إشعار «قهوتك جاهزة» على جوالك أو جهازك اللوحي حتى لو كان نقطة مغلقاً.',
     f4: 'تحديثات تلقائية للميزات', f4d: 'تصلك ميزات برو الجديدة وتحديثاتها تلقائياً.',
-    f5: 'Nuqta Cloud', f5d: 'قريباً ومشمولة: نقطة من أي مكان وتنبيه «قهوتك جاهزة» على جوالك.',
-    soon: 'قريباً',
+    f5: 'Nuqta Cloud', f5d: 'افتح نقطة من أي مكان عبر hub.nuqtasa.tools/app، وتنبيه «قهوتك جاهزة» على جوالك.',
     get: 'احصل على برو', have: 'لدي برو · تسجيل الدخول', close: 'إغلاق',
     how: 'بعد الشراء سجّل الدخول هنا بنفس البريد، وتنفتح الميزات فوراً.',
   },
@@ -28,8 +27,7 @@ const TX = {
     f6: 'Voice control', f6d: 'Voice names for your recipes with Alexa, Siri and NFC shortcuts, safety options and a command log.',
     f7: 'Device notifications', f7d: 'A "coffee ready" alert on your phone or tablet, even when Nuqta is closed.',
     f4: 'Feature updates, automatically', f4d: 'New Pro features and updates arrive on their own.',
-    f5: 'Nuqta Cloud', f5d: 'Coming soon, included: reach Nuqta from anywhere and get "coffee ready" alerts on your phone.',
-    soon: 'Soon',
+    f5: 'Nuqta Cloud', f5d: 'Open Nuqta from anywhere at hub.nuqtasa.tools/app, with "coffee ready" alerts on your phone.',
     get: 'Get Pro', have: 'I have Pro · sign in', close: 'Close',
     how: 'After you buy, sign in here with the same email and everything unlocks right away.',
   },
@@ -88,7 +86,7 @@ export default function ProSheet({ lang, pro, onSignIn, onClose }) {
             <li key={k}>
               <span className="pro-ic"><Icon d={ICONS[k]} /></span>
               <div>
-                <b>{T[k]}{k === 'f5' && <span className="pro-soon">{T.soon}</span>}</b>
+                <b>{T[k]}</b>
                 <span>{T[`${k}d`]}</span>
                 {k === 'f2' && (
                   <div className="pro-swatches">

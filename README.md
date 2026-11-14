@@ -208,8 +208,7 @@ The app is complete and free on your home Wi‑Fi. **Nuqta Pro** unlocks the res
 - **Voice control page** — voice names for your recipes with Alexa, Siri and NFC shortcuts,
   safety options and a command log. (Basic Alexa control stays free.)
 - **Feature updates, automatically** — new Pro features arrive on their own.
-- **Nuqta Cloud** (coming soon, included): open Nuqta from anywhere, "coffee ready" alerts on your
-  phone, and backup.
+- **Nuqta Cloud** (included): open Nuqta from anywhere and get "coffee ready" alerts on your phone.
 
 **49 SAR, paid once, for life** — no subscription. Get it at
 **[hub.nuqtasa.tools](https://hub.nuqtasa.tools)**, then in the app open **Settings → Nuqta Pro** and
