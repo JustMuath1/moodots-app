@@ -36,7 +36,7 @@ export default function NotifySheet({ lang, onClose, soundOn, onToggleSound, pus
     if (st?.on) { await pushUnsubscribe(); }
     else {
       const r = await pushSubscribe();
-      if (!r.ok) setMsg(T[r.reason === 'server-off' ? 'serverOff' : r.reason === 'denied' ? 'denied' : 'unsupported'] || '');
+      if (!r.ok) setMsg(T[r.reason === 'server-off' ? 'serverOff' : r.reason === 'denied' ? 'denied' : r.reason === 'pro' ? 'proOnly' : 'unsupported'] || '');
     }
     await refresh(); setBusy(false);
   };

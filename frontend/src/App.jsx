@@ -398,7 +398,7 @@ export default function App() {
 
   const sendAction = useCallback((action, extra) => send({ action, ...extra }), [send]);
   const refreshPush = useCallback(() => { pushState().then((s) => setPushOn(Boolean(s.on))).catch(() => {}); }, []);
-  const refreshCaps = useCallback(() => { fetch('/api/capabilities').then((r) => r.json()).then((c) => c && c.cloud !== undefined && setCaps(REMOTE ? { ...c, push: false } : c)).catch(() => {}); }, []);
+  const refreshCaps = useCallback(() => { fetch('/api/capabilities').then((r) => r.json()).then((c) => c && c.cloud !== undefined && setCaps(REMOTE ? { ...c, push: true } : c)).catch(() => {}); }, []);
   proRef.current = caps.pro;
   // Free app: fall back from a Pro theme or scene (e.g. after signing out)
   useEffect(() => {

@@ -2,6 +2,15 @@
 // Needs a secure page (https). On iPhone/iPad the site must be added to the
 // Home Screen and opened from that icon first (Apple only allows push for installed web apps).
 
+import { REMOTE, getToken } from './remote';
+
+// Away from home (the /app page) the phone subscribes with the Nuqta server instead of the home computer.
+const SW = REMOTE ? ['/app/sw.js', '/app'] : ['/sw.js', '/'];
+const api = (path, body) => fetch(REMOTE ? `/push/${path}` : `/api/push/${path}`, {
+  method: 'POST', headers: { 'Content-Type': 'application/json', ...(REMOTE ? { Authorization: `Bearer ${getToken()}` } : {}) },
+  body: JSON.stringify(body || {}),
+});
+
 const urlB64ToUint8 = (s) => {
   const pad = '='.repeat((4 - (s.length % 4)) % 4);
   const b = atob((s + pad).replace(/-/g, '+').replace(/_/g, '/'));
@@ -20,7 +29,11 @@ export function needsInstall() {
 }
 
 async function reg() {
-  return navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(() => navigator.serviceWorker.ready);
+  return navigator.serviceWorker.register(SW[0], { scope: SW[1] }).then((r) => {
+    if (r.active) return r;
+    const w = r.installing || r.waiting;
+    return new Promise((ok) => { if (!w) return ok(r); w.addEventListener('statechange', () => { if (w.state === 'activated') ok(r); }); });
+  });
 }
 
 export async function pushState() {
@@ -37,16 +50,18 @@ export async function pushState() {
 // Turn push on for this device (must be called from a tap). Returns { ok, reason? }.
 export async function pushSubscribe() {
   if (!pushSupported()) return { ok: false, reason: 'unsupported' };
-  const meta = await fetch('/api/push/key').then((r) => r.json()).catch(() => null);
-  if (!meta?.enabled || !meta.key) return { ok: false, reason: 'server-off' };
+  const meta = await fetch(REMOTE ? '/push/vapid-public-key' : '/api/push/key').then((r) => r.json()).catch(() => null);
+  const key = meta?.key || meta?.public_key;
+  if (!meta?.enabled || !key) return { ok: false, reason: 'server-off' };
   const perm = await Notification.requestPermission();
   if (perm !== 'granted') return { ok: false, reason: 'denied' };
   const r = await reg();
   let sub = await r.pushManager.getSubscription();
   if (!sub) {
-    sub = await r.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(meta.key) });
+    sub = await r.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(key) });
   }
-  await fetch('/api/push/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sub) });
+  const res = await api('subscribe', sub.toJSON()).catch(() => null);
+  if (!res || !res.ok) { await sub.unsubscribe().catch(() => {}); return { ok: false, reason: res?.status === 402 ? 'pro' : 'server-off' }; }
   return { ok: true };
 }
 
@@ -55,7 +70,7 @@ export async function pushUnsubscribe() {
     const r = await reg();
     const sub = await r.pushManager.getSubscription();
     if (sub) {
-      await fetch('/api/push/unsubscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: sub.endpoint }) });
+      await api('unsubscribe', { endpoint: sub.endpoint });
       await sub.unsubscribe();
     }
   } catch { /* ignore */ }
@@ -63,5 +78,5 @@ export async function pushUnsubscribe() {
 }
 
 export async function pushTest() {
-  return fetch('/api/push/test', { method: 'POST' }).then((r) => r.json()).catch(() => ({ ok: false }));
+  return api('test').then((r) => r.json()).catch(() => ({ ok: false }));
 }

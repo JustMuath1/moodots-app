@@ -1326,7 +1326,7 @@ def notify_finished(name: str, weight: float, demo: bool = False):
         body = f"{name} · {round(weight)} g" if name else f"{round(weight)} g"
         import threading
         threading.Thread(target=lambda: log.info("Web Push sent to %d device(s)", pusher.send(title, body, tag="brew", url="/")), daemon=True).start()
-    if _hub_agent_ws is not None and not _hub_agent_ws.closed and not demo and main_loop:
+    if _hub_agent_ws is not None and not _hub_agent_ws.closed and not demo and main_loop and pro_active():
         title = "قهوتك جاهزة · Coffee ready"
         body = f"{name} · {round(weight)} g" if name else f"{round(weight)} g"
         push_envelope = json.dumps({"__hub_push__": True, "title": title, "body": body})
