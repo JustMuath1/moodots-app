@@ -24,6 +24,8 @@ const TX = {
     off_title: 'منزلك غير متصل', off_sub: 'الكمبيوتر الذي يشغّل نقطة مطفأ أو في وضع السكون أو بلا إنترنت.',
     retry: 'حاول مرة أخرى', off_hint: 'تأكّد أن الكمبيوتر الذي يشغّل نقطة يعمل.',
     last_seen: 'آخر اتصال', never: 'لم يتصل منزلك بعد. سجّل الدخول من تطبيق نقطة في المنزل: الإعدادات ← نقطة برو.',
+    link_title: 'اربط منزلك', link_sub: 'حساب نقطة برو جاهز. بقي ربط الكمبيوتر الذي يشغّل نقطة في منزلك، مرة واحدة فقط.',
+    link_hint: 'في تطبيق نقطة بالمنزل: الإعدادات ← نقطة برو ← سجّل الدخول بنفس البريد.',
     signout: 'تسجيل الخروج', np_title: 'هذا الحساب بلا Pro',
     np_sub: 'الدخول من الخارج ميزة في نقطة Pro. دفعة واحدة تفتحها لك مدى الحياة.',
     get_pro: 'احصل على نقطة Pro', price: (n) => `${n} ر.س · مرة واحدة`, other: 'الدخول ببريد آخر', lang: 'English',
@@ -42,6 +44,8 @@ const TX = {
     off_title: 'Your home is offline', off_sub: 'The computer running Nuqta is off, asleep, or has no internet.',
     retry: 'Try again', off_hint: 'Make sure the computer running Nuqta is on.',
     last_seen: 'Last seen', never: "Your home hasn't connected yet. Sign in from the Nuqta app at home: Settings → Nuqta Pro.",
+    link_title: 'Link your home', link_sub: 'Your Nuqta Pro account is ready. Link the computer that runs Nuqta at home, just once.',
+    link_hint: 'In the Nuqta app at home: Settings → Nuqta Pro → sign in with this same email.',
     signout: 'Sign out', np_title: 'No Pro on this account',
     np_sub: 'Remote access is part of Nuqta Pro. One payment unlocks it for good.',
     get_pro: 'Get Nuqta Pro', price: (n) => `${n} SAR · one-time`, other: 'Use another email', lang: 'العربية',
@@ -283,11 +287,11 @@ export default function RemoteGate({ children }) {
       <>
         <div className="rg-center grow">
           <div className="rg-sleep"><Dots rows={HOUSE} step={8} r={3.2} colors={{ a: C.dim, d: '#4A423B' }} /><Dots className="rg-z" rows={ZED} step={8} r={3} colors={{ a: C.warn }} /></div>
-          <h2 className="rg-h2 lg">{T.off_title}</h2>
-          <p className="rg-sub">{info.net ? T.err_net : T.off_sub}</p>
-          {!info.net && <p className="rg-faint sm">{info.last_seen ? <>{T.last_seen} {ago(info.last_seen, lang)}</> : T.never}</p>}
+          <h2 className="rg-h2 lg">{!info.net && !info.last_seen ? T.link_title : T.off_title}</h2>
+          <p className="rg-sub">{info.net ? T.err_net : info.last_seen ? T.off_sub : T.link_sub}</p>
+          {!info.net && info.last_seen && <p className="rg-faint sm">{T.last_seen} {ago(info.last_seen, lang)}</p>}
         </div>
-        <div className="rg-hint"><i />{T.off_hint}</div>
+        <div className="rg-hint"><i />{!info.net && !info.last_seen ? T.link_hint : T.off_hint}</div>
         <button className="rg-btn" onClick={() => check()}>{T.retry}</button>
         <button className="rg-quiet" onClick={doSignOut}>{T.signout}</button>
       </>
