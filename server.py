@@ -2713,6 +2713,7 @@ def voice_payload() -> dict:
         "enabled": bool(_voice.get("enabled", False)),
         "helper": matter_available(),
         "matter": {"code": _matter["pairing"].get("manual", ""), "paired": bool(_matter["pairing"].get("commissioned")),
+                   "window": bool(_matter["pairing"].get("window")), "apps": _matter["pairing"].get("fabrics", []),
                    "running": bool(_matter.get("proc") and _matter["proc"].poll() is None)},
         "count": len(_voice_device_names) if _voice.get("enabled", False) else 0,
         "devices": [{"key": k, "enabled": voice_device_on(k),
@@ -2749,12 +2750,14 @@ async def handle_voice_post(request):
         _voice["known_names"] = sorted(_voice_device_names)
     if b.get("rediscover"):
         restart = True
+    if b.get("pair_another"):
+        _matter["open_req"] = int(time.time() * 1000)   # the bridge opens pairing on its next check
     if b.get("fresh"):
         # new identities for every device: Alexa adds them as new on its next discovery
         _voice["gen"] = int(_voice.get("gen") or 0) + 1
         _voice["known_names"] = []
         restart = True
-    pro_keys = ("device", "recipes", "default", "safety")
+    pro_keys = ("device", "recipes", "default", "safety", "pair_another")
     if any(k in b for k in pro_keys) and not pro_active():
         return web.json_response({"ok": False, "error": "pro_required"}, status=402)
     if "device" in b:
@@ -3327,6 +3330,7 @@ async def handle_voice_matter_get(request):
         return web.json_response({"error": "local only"}, status=403)
     m = _matter_identity()
     return web.json_response({"passcode": m["passcode"], "discriminator": m["discriminator"], "serial": m["serial"],
+                              "open_pairing": _matter.get("open_req", 0),
                               "devices": [{"id": e["id"], "name": e["name"], "on": _hue_is_on(e)} for e in voice_offered()]})
 
 

@@ -21,8 +21,15 @@ const TX = {
     bBrew: (r) => `Brewing ${r || ''}. Any new brew is refused until it ends.`, stop: 'Stop',
     alexa: 'Amazon Alexa', apple: 'Apple Home', google: 'Google Home', connected: 'Connected', notSetUp: 'Not set up', later: 'Coming later',
     alexaHow: 'Works today. Discover devices in the Alexa app, on the same Wi-Fi.',
-    appleHow: 'Scan a pairing code in the Home app on iPhone. Away from home you need an Apple TV or HomePod.',
-    googleHow: 'Link your Nuqta account inside the Google Home app. It goes through the Nuqta server.',
+    appleHow: 'Pair with the same setup code in the Home app on iPhone. Works with Siri too.',
+    googleHow: 'Pair with the same setup code in the Google Home app.',
+    close: 'Close', ready: 'Ready to pair', pairApple: 'Add Nuqta to Apple Home', pairGoogle: 'Add Nuqta to Google Home',
+    openPair: 'Open pairing', pairOpen: 'Pairing is open · 15 min', pairClosed: 'Pairing closed', pairFirst: 'Pair with Alexa first, or pair here directly.',
+    ap1: 'Press “Open pairing” below.', ap2: 'iPhone Home app → + → Add Accessory → More options… → enter the code.', ap3: 'When it warns “Uncertified accessory”, choose Add Anyway.',
+    ap4: 'Away from home, Apple Home needs an Apple TV or HomePod.',
+    gp1: 'Press “Open pairing” below.', gp2: 'Google Home app → Devices → + Add → Matter-enabled device → Set up without QR code → enter the code.', gp3: 'Choose a room and finish.',
+    gp4: 'If Google says it can’t connect, the test version of Nuqta isn’t allowed in Google Home yet; tell us.',
+    pairedApps: (n) => `${n} app${n === 1 ? '' : 's'} paired`,
     rediscover: 'Re-discover devices', rediscovered: 'Devices refreshed. In the Alexa app: Add device → Discover.', setUp: 'Set up',
     steps: 'Set up in three steps', s1: 'Choose your devices on the Devices tab, then press Send to Alexa', s2: 'Alexa app: Devices → + → Add Device → Matter → enter the setup code below', s3: 'Say: "Alexa, turn on coffee"',
     pairTitle: 'Setup code', pairSub: 'Enter it in the Alexa app (also works in Apple Home and Google Home).', paired: 'Paired', notPaired: 'Not paired yet', starting: 'Starting…',
@@ -85,8 +92,15 @@ const TX = {
     bBrew: (r) => `تحضير جارٍ: ${r || ''}. أي تحضير جديد سيُرفض حتى ينتهي.`, stop: 'إيقاف',
     alexa: 'Amazon Alexa', apple: 'Apple Home', google: 'Google Home', connected: 'متصل', notSetUp: 'غير مُعدّ', later: 'قريباً',
     alexaHow: 'يعمل اليوم. اكتشف الأجهزة من تطبيق Alexa على نفس الواي فاي.',
-    appleHow: 'امسح رمز الاقتران في تطبيق Home على iPhone. خارج المنزل تحتاج Apple TV أو HomePod.',
-    googleHow: 'اربط حساب نقطة من داخل تطبيق Google Home. يمرّ عبر خادم نقطة.',
+    appleHow: 'اقترن بنفس رمز الإعداد في تطبيق Home على iPhone. يعمل مع Siri أيضاً.',
+    googleHow: 'اقترن بنفس رمز الإعداد في تطبيق Google Home.',
+    close: 'إغلاق', ready: 'جاهز للاقتران', pairApple: 'أضف نقطة إلى Apple Home', pairGoogle: 'أضف نقطة إلى Google Home',
+    openPair: 'افتح الاقتران', pairOpen: 'الاقتران مفتوح · 15 دقيقة', pairClosed: 'الاقتران مغلق', pairFirst: 'اقترن مع Alexa أولاً، أو اقترن هنا مباشرة.',
+    ap1: 'اضغط «افتح الاقتران» بالأسفل.', ap2: 'تطبيق Home على iPhone ← + ← إضافة ملحق ← خيارات أخرى… ← أدخل الرمز.', ap3: 'عند تحذير «ملحق غير معتمد» اختر «إضافة على أي حال».',
+    ap4: 'خارج المنزل يحتاج Apple Home إلى Apple TV أو HomePod.',
+    gp1: 'اضغط «افتح الاقتران» بالأسفل.', gp2: 'تطبيق Google Home ← الأجهزة ← + إضافة ← جهاز يدعم Matter ← الإعداد بدون رمز QR ← أدخل الرمز.', gp3: 'اختر الغرفة وأنهِ الإعداد.',
+    gp4: 'إن قال Google إنه لا يستطيع الاتصال، فالنسخة التجريبية من نقطة غير مسموحة في Google Home بعد؛ أخبرنا.',
+    pairedApps: (n) => `${n} تطبيق مقترن`,
     rediscover: 'إعادة اكتشاف الأجهزة', rediscovered: 'تم تحديث الأجهزة. في تطبيق Alexa: إضافة جهاز ← اكتشاف.', setUp: 'إعداد',
     steps: 'الإعداد في ثلاث خطوات', s1: 'اختر أجهزتك من تبويب الأجهزة، ثم اضغط «أرسل إلى Alexa»', s2: 'تطبيق Alexa: الأجهزة ← + ← إضافة جهاز ← Matter ← أدخل رمز الإعداد أدناه', s3: 'قل: «Alexa, turn on coffee»',
     pairTitle: 'رمز الإعداد', pairSub: 'أدخله في تطبيق Alexa (يعمل أيضاً في Apple Home و Google Home).', paired: 'تم الاقتران', notPaired: 'لم يُقترن بعد', starting: 'جارٍ التشغيل…',
@@ -190,6 +204,7 @@ export default function VoicePage({ lang, machine, tick, onBack, onGetPro, onCon
   const [copied, setCopied] = useState('');
   const [helperHelp, setHelperHelp] = useState(false);
   const [fresh, setFresh] = useState(false);
+  const [pairApp, setPairApp] = useState(null);   // 'apple' | 'google'
   const [names, setNames] = useState({});            // voice names being typed, before they're saved
   const saveTimer = useRef(null);
 
@@ -265,8 +280,8 @@ export default function VoicePage({ lang, machine, tick, onBack, onGetPro, onCon
         <div className="vc-main">
           <div className="vc-platforms">
             {[['alexa', 'A', d.enabled && d.helper ? 'ok' : 'idle', d.enabled && d.helper ? T.connected : T.notSetUp, T.alexaHow, false],
-              ['apple', 'H', 'idle', T.later, T.appleHow, true],
-              ['google', 'G', 'idle', T.later, T.googleHow, true]].map(([k, letter, st, stText, how, soon]) => (
+              ['apple', 'H', d.matter?.running ? 'ok' : 'idle', d.matter?.running ? T.ready : T.notSetUp, T.appleHow, 'pair'],
+              ['google', 'G', d.matter?.running ? 'ok' : 'idle', d.matter?.running ? T.ready : T.notSetUp, T.googleHow, 'pair']].map(([k, letter, st, stText, how, soon]) => (
               <div key={k} className={`vc-card vc-platform${soon ? ' soon' : ''}`}>
                 <div className="vc-plat-head">
                   <span className="vc-logo">{letter}</span>
@@ -275,7 +290,7 @@ export default function VoicePage({ lang, machine, tick, onBack, onGetPro, onCon
                 </div>
                 <p>{how}</p>
                 {soon
-                  ? <button className="nb nb-secondary" disabled>{T.setUp}</button>
+                  ? <button className="nb nb-secondary" disabled={!d.matter?.running} onClick={() => (pro ? setPairApp(k) : onGetPro())}>{T.setUp}</button>
                   : <>
                     <button className="nb nb-secondary" disabled={!d.enabled || !d.helper} onClick={() => patch({ rediscover: true }).then(() => showToast?.(T.rediscovered, 'info'))}>{T.rediscover}</button>
                     <button className="vc-link start" disabled={!d.helper} onClick={() => setFresh(true)}>{T.fresh}</button>
@@ -490,6 +505,24 @@ export default function VoicePage({ lang, machine, tick, onBack, onGetPro, onCon
       </div>
       {banner && (
         <div className={`vc-banner ${banner.cls}`}><span>{banner.text}</span>{banner.btn && <button className="nb nb-secondary nb-sm" onClick={banner.act}>{banner.btn}</button>}</div>
+      )}
+
+      {pairApp && (
+        <div className="modal-overlay" onClick={() => setPairApp(null)}>
+          <div className="modal sheet-form vc-fresh" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title">{pairApp === 'apple' ? T.pairApple : T.pairGoogle}</div>
+            <div className="vc-pair">
+              <div><b>{T.pairTitle}</b><span>{(d.matter?.apps || []).length ? T.pairedApps(d.matter.apps.length) : T.pairFirst}</span></div>
+              <code dir="ltr">{d.matter?.code ? d.matter.code.replace(/^(\d{4})(\d{3})(\d{4})$/, '$1-$2-$3') : T.starting}</code>
+              <span className={`vc-chip ${d.matter?.window || !d.matter?.paired ? 'ok' : 'idle'}`}><i />{d.matter?.window || !d.matter?.paired ? T.pairOpen : T.pairClosed}</span>
+            </div>
+            <ol>{(pairApp === 'apple' ? [T.ap1, T.ap2, T.ap3, T.ap4] : [T.gp1, T.gp2, T.gp3, T.gp4]).map((x, i) => <li key={i}><span dir="ltr">{i + 1}</span>{x}</li>)}</ol>
+            <div className="btn-row">
+              <button className="nb nb-secondary" onClick={() => setPairApp(null)}>{T.close}</button>
+              <button className="nb nb-primary" disabled={d.matter?.window || !d.matter?.paired} onClick={() => patch({ pair_another: true })}>{T.openPair}</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {fresh && (

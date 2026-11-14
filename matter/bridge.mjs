@@ -9,7 +9,8 @@
 //   MATTER_STORAGE_PATH  folder that keeps the pairing (read by the Matter library itself)
 //   MATTER_PORT       5540
 
-import { Endpoint, ServerNode, VendorId } from "@matter/main";
+import { Endpoint, Minutes, ServerNode, VendorId } from "@matter/main";
+import { DeviceCommissioner } from "@matter/main/protocol";
 import { BridgedDeviceBasicInformationServer } from "@matter/main/behaviors/bridged-device-basic-information";
 import { OnOffPlugInUnitDevice } from "@matter/main/devices/on-off-plug-in-unit";
 import { AggregatorEndpoint } from "@matter/main/endpoints/aggregator";
@@ -63,12 +64,30 @@ for (const d of devices) {
   });
 }
 
+function windowOpen() {
+  try { return server.env.get(DeviceCommissioner).windowStatus !== 0; } catch { return false; }
+}
+
 async function report() {
   const codes = server.state.commissioning.pairingCodes;
   await nuqta("/api/voice/matter", {
     pairing: { manual: codes.manualPairingCode, qr: codes.qrPairingCode,
-               commissioned: server.state.commissioning.commissioned, devices: devices.length },
+               commissioned: server.state.commissioning.commissioned, devices: devices.length,
+               window: windowOpen(), fabrics: (server.state.operationalCredentials?.fabrics || []).map((f) => f.label || "") },
   }).catch(() => {});
+}
+
+// "Pair another app" on the Voice page: open pairing again for 15 minutes, with the same code,
+// so Apple Home or Google Home can join next to Alexa.
+let handledOpen = cfg.open_pairing || 0;
+async function maybeOpen(req) {
+  if (!req || req === handledOpen) return;
+  handledOpen = req;
+  if (!server.state.commissioning.commissioned || windowOpen()) return;
+  try {
+    await server.env.get(DeviceCommissioner).allowBasicCommissioning({ timeout: Minutes(15) });
+    console.log("Pairing reopened for 15 minutes");
+  } catch (e) { console.log(`Couldn't reopen pairing: ${e}`); }
 }
 
 server.lifecycle.commissioned.on(report);
@@ -81,6 +100,7 @@ console.log(`Nuqta Matter bridge ready: ${devices.length} device(s), code ${serv
 setInterval(async () => {
   try {
     const now = await nuqta("/api/voice/matter");
+    await maybeOpen(now.open_pairing);
     for (const d of now.devices || []) {
       const ep = byId.get(d.id);
       if (ep && ep.state.onOff.onOff !== Boolean(d.on)) {
