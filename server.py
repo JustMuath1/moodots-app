@@ -3209,6 +3209,20 @@ _hue_seen = {"read": None, "check": None, "command": None, "command_name": "", "
 _hue_ssdp = None
 
 
+ALEXA_LOG = Path(__file__).parent / "alexa.log"
+
+
+def _hue_trace(msg: str) -> None:
+    """One line per Alexa contact, for troubleshooting a speaker that won't connect."""
+    try:
+        if ALEXA_LOG.exists() and ALEXA_LOG.stat().st_size > 2_000_000:
+            ALEXA_LOG.write_text("")
+        with open(ALEXA_LOG, "a") as fh:
+            fh.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {msg}\n")
+    except Exception:
+        pass
+
+
 def _mac_hex() -> str:
     import uuid as _uuid
     return f"{_uuid.getnode():012x}".upper()
@@ -3271,6 +3285,8 @@ async def hue_handle(request):
     """Hue bridge API (v1) — the part Echo speakers use."""
     path = request.path.rstrip("/")
     ip = get_local_ip()
+    if path == "/description.xml" or path.startswith("/api"):
+        _hue_trace(f"HTTP {request.method} {request.path} from {request.remote} ua={request.headers.get('User-Agent', '')[:60]}")
     if path == "/description.xml":
         _hue_seen["read"] = int(time.time())
         return web.Response(text=_hue_description(ip), content_type="text/xml")
@@ -3341,6 +3357,8 @@ class _HueSSDP(asyncio.DatagramProtocol):
             return
         st = re.search(r"(?im)^ST:\s*(\S+)", text)
         st = st.group(1) if st else ""
+        if addr[0] != get_local_ip():
+            _hue_trace(f"SEARCH from {addr[0]} ST={st}")
         if st not in ("ssdp:all", "upnp:rootdevice", "urn:schemas-upnp-org:device:basic:1", "urn:schemas-upnp-org:device:Basic:1"):
             return
         ip, m = get_local_ip(), _mac_hex().lower()
