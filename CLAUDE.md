@@ -10,13 +10,15 @@ Reply in the language they write in (Arabic or English).
 ## 1. Check what they have
 Detect the OS first, then check:
 - `python3 --version` (Windows: `py -3 --version` or `python --version`) — needs **3.10+**
-- `node --version` — needs **18+**
+- `node --version` — needs **20.19+** (18 runs Nuqta, but voice control is skipped; the installer says so)
 - `git --version` — only needed if they want updates via git
 
 If Python or Node is missing, tell them exactly what to install and wait:
 - macOS: python.org/downloads and nodejs.org (LTS), or `brew install python node` if they use Homebrew
 - Windows: python.org/downloads (tell them to tick **"Add python.exe to PATH"**) and nodejs.org (LTS)
-- Linux: their package manager, e.g. `sudo apt install python3 python3-venv nodejs npm`
+- Linux: their package manager, e.g. `sudo apt install python3 python3-venv nodejs npm` — check the
+  Node version afterwards: Debian 12 / Raspberry Pi OS Bookworm and older Ubuntu ship Node 18 (fine for
+  Nuqta, no voice control). Raspberry Pi OS 13 Trixie ships 20.19+.
 
 The computer must have Bluetooth and stay near the xBloom.
 
@@ -70,16 +72,22 @@ Then confirm it's up: `curl -s localhost:8420/api/state` (or open http://localho
   password into chat). It's git-ignored and stays on their computer.
 - **Fonts:** the UI prefers the licensed "Thmanyah" font and falls back to IBM Plex Sans Arabic. To
   use Thmanyah, put its `.woff2`/`.otf` files in a `fonts/` folder.
-- **Nuqta Pro** (49 SAR once, for life) unlocks brew analytics, every theme and every standby scene;
-  the free app has 4 themes and 3 standby scenes. They get it at https://hub.nuqtasa.tools, then in
+- **Nuqta Pro** (49 SAR once, for life) unlocks brew analytics, every theme and every standby scene, the voice control page, device
+  notifications, automatic feature updates and Nuqta Cloud (basic "Alexa, turn on coffee" stays free);
+  the free app has 4 themes and 3 standby scenes. They request it at https://hub.nuqtasa.tools (online
+  payment isn't live; the owner contacts them, then a "Nuqta Pro is active" email arrives), then in
   the app: **Settings → Nuqta Pro** → sign in with the same email (a 6-digit code arrives by email).
   Nuqta Cloud (remote access at hub.nuqtasa.tools/app, phone alerts) is included with Pro and works
-  today; backup is not available.
+  today. Cloud backup of recipes and settings does not exist — don't promise it.
 
 ## Updating
 macOS: `zsh nuqta-update.command` (pulls, updates packages, rebuilds, restarts). Others: `git pull`,
 then run the installer again (step 3) and restart (step 4). Their recipes, settings and history are
 kept — they're in git-ignored files.
+If the folder has no `.git` (a ZIP install), `git pull` and the update script can't download anything:
+clone a fresh copy next to it, copy the old folder's top-level `*.json` and `*.db` files and its
+`matter_data/` folder (if any) into the clone, then install and start from the clone. Tell them which
+folder to use from now on.
 
 ## Troubleshooting
 - **"Disconnected":** machine on and in Bluetooth range? On macOS: System Settings → Privacy &

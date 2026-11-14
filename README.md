@@ -73,12 +73,15 @@ and starts Nuqta. Nothing is installed system‑wide.
 
 | Your computer | Do this |
 |---|---|
-| **macOS** | Double‑click **`install.command`** (or run `zsh install.command` in Terminal) |
+| **macOS** | Double‑click **`install.command`** (or in Terminal: `cd` into the folder, then `zsh install.command`) |
 | **Windows** | Double‑click **`install.bat`** |
 | **Linux** | Run `bash install.sh` |
 
+> The folder is **`nuqta-app-master`** (in Downloads) if you used the ZIP, or **`nuqta-app`** if you used Git.
+> In Terminal, type `cd ` (with a space) and drag the folder into the window to go there.
+
 > **macOS says the file "can't be opened"?** That happens with the ZIP download. Right‑click
-> `install.command` → **Open** → **Open**, or run `zsh install.command` in Terminal.
+> `install.command` → **Open** → **Open**, or run `zsh install.command` in Terminal from that folder.
 
 ### 3. Open the dashboard
 - On the first start, **macOS asks for Bluetooth permission — click Allow.**
@@ -233,17 +236,25 @@ The app is complete and free on your home Wi‑Fi. **Nuqta Pro** unlocks the res
 - **Feature updates, automatically** — new Pro features arrive on their own.
 - **Nuqta Cloud** (included): open Nuqta from anywhere and get "coffee ready" alerts on your phone.
 
-**49 SAR, paid once, for life** — no subscription. Get it at
-**[hub.nuqtasa.tools](https://hub.nuqtasa.tools)**, then in the app open **Settings → Nuqta Pro** and
-sign in with the same email.
+**49 SAR, paid once, for life** — no subscription. Request it at
+**[hub.nuqtasa.tools](https://hub.nuqtasa.tools)**. Online payment isn't live yet, so we contact you to
+pay; then a "Nuqta Pro is active" email arrives. In the app open **Settings → Nuqta Pro**, sign in
+with the same email and enter the 6‑digit code that's emailed to you.
 
 ## Updating
-Double‑click **`nuqta-update.command`** (macOS). It downloads the latest version, updates packages,
-rebuilds and restarts — your recipes, settings and history are kept. On Windows or Linux:
+**Installed with Git:** double‑click **`nuqta-update.command`** (macOS). It downloads the latest
+version, updates packages, rebuilds and restarts — your recipes, settings and history are kept. On
+Windows or Linux, inside the Nuqta folder:
 ```bash
 git pull
 ```
-then run the installer again. With Claude Code, just say **"update Nuqta"**.
+then run the installer again.
+
+**Installed from the ZIP:** download the new ZIP, copy every `.json` and `.db` file (your settings,
+recipes and history) and the `matter_data` folder, if there is one, from the old folder into the new
+one, then run the installer. (`nuqta-update.command` can't download anything for a ZIP install.)
+
+With Claude Code, just say **"update Nuqta"**.
 
 ## Troubleshooting
 - **"Disconnected" / can't find the machine:** keep the computer within Bluetooth range and the
