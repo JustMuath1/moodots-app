@@ -66,6 +66,7 @@ CMD_TARE          = 8500
 CMD_BREW_PAUSE    = 40518
 CMD_BREW_RESUME   = 40524
 CMD_BREW_STOP     = 40519
+CMD_BACK_TO_HOME  = 8022   # what the xBloom app sends before every brew
 
 # Notification codes (machine -> host)
 N_ACTIVITY      = 8023
@@ -1087,45 +1088,78 @@ async def ensure_awake():
     await asyncio.sleep(1.5)
 
 
-# The machine remembers the amount of the last "water only" pour until that screen is properly left.
-# A recipe started while it still remembers stops pouring at that amount (a 153 ml recipe ended at
-# 30 ml on 2026-11-14 after a 30 ml hot-water command). So: note every use of the water screen, and
-# before any recipe make the machine leave it and confirm that it did.
+# Why recipes used to brew the wrong thing (found 2026-11-16 in brew_trace.log): Nuqta sent the
+# recipe frames 0.15 s apart right after a tare, and the tare switches the machine to its scale screen.
+# The machine silently ignored 8102/8104/8001 there (no echo), so "Brew" (8002) ran whatever it had
+# loaded before: a single 30 ml pour, a 200 ml program, the grinder at its own setting instead of the
+# recipe's. The xBloom app does it differently and so does Nuqta now: 8022 "back to home" first, no
+# tare, and each frame waits for the machine's echo before the next. If the recipe isn't echoed,
+# Nuqta does not press Brew.
 brewer_dirty = True           # water screen used and not yet confirmed closed (unknown at start-up)
 _brewer_quit_seen = 0.0       # when the machine last confirmed leaving the water screen
+_echo_seen: dict = {}         # code -> when the machine last sent a packet with that code (its echo/ACK)
+RECIPE_NOT_ACCEPTED = "recipe_not_accepted"
+
+
+async def back_to_home() -> None:
+    """8022, as the xBloom app sends before every brew: the machine drops whatever screen or
+    half-loaded recipe it was on and goes to its home screen."""
+    asked = time.time()
+    await send_frame(build_frame(CMD_BACK_TO_HOME))
+    await _wait_until(lambda: _echo_seen.get(CMD_BACK_TO_HOME, 0) >= asked, 1.5, 0.05)
+    await _wait_until(lambda: state.activity_code in (0, 1), 2.0, 0.1)
+    await asyncio.sleep(0.4)
 
 
 async def leave_modules() -> None:
-    """Before a recipe: stop and leave the water / grinder / scale screens, confirmed."""
+    """Before a recipe: stop what the dashboard or voice started, then send the machine home.
+    Only screens the machine is actually on get a "leave" command: extra leave commands before a
+    recipe are known to make the grinder misbehave (hacs-xbloom brewing notes)."""
     global module_mode, brewer_dirty
-    if alexa_flags.get("grind") or module_mode == "grinder":
+    code = state.activity_code
+    if alexa_flags.get("grind") or module_mode == "grinder" or code == 2:
         await send_frame(frame_grinder_stop())
         await asyncio.sleep(0.3)
         await send_frame(frame_quit_grinder())
         await asyncio.sleep(0.3)
         alexa_flags["grind"] = False
-    if module_mode == "scale":
+    if module_mode == "scale" or code in (4, 5):
         await send_frame(frame_quit_scale())
         await asyncio.sleep(0.3)
-    if alexa_flags.get("water") or module_mode == "brewer":
+    if alexa_flags.get("water") or module_mode == "brewer" or code == 3:
         await send_frame(frame_brewer_stop())
         await asyncio.sleep(0.4)
         alexa_flags["water"] = False
-    if brewer_dirty or module_mode == "brewer":
-        for attempt in range(3):
-            asked = time.time()
-            if attempt:                      # the machine ignores "leave" unless it is on that screen
-                await send_frame(frame_brewer_enter(pattern_to_byte(PAT_SPIRAL), 90))
-                await asyncio.sleep(0.7)
-            await send_frame(frame_quit_brewer())
-            if await _wait_until(lambda: _brewer_quit_seen >= asked, 1.5, 0.1):
-                brewer_dirty = False
-                break
-        else:
-            log.warning("The machine did not confirm leaving the water screen before the brew")
-        await _wait_until(lambda: state.activity_code in (0, 1), 2.0, 0.1)
+        asked = time.time()
+        await send_frame(frame_quit_brewer())
+        await _wait_until(lambda: _brewer_quit_seen >= asked, 1.5, 0.1)
+    brewer_dirty = False
+    await back_to_home()
     module_mode = ""
     end_module_run()
+
+
+async def send_recipe(recipe: dict) -> str | None:
+    """Load a recipe so the machine really takes it. Each frame waits for the machine's echo (sent
+    once more if none comes), as the xBloom app chains them. Returns RECIPE_NOT_ACCEPTED when the
+    machine didn't echo, so nothing is brewed on a recipe the machine never got."""
+    brew_session["loaded"] = False
+    for f in build_load_frames(recipe):
+        code = frame_code(f)
+        wait = 3.0 if code in (CMD_RECIPE_GRIND, CMD_RECIPE_NO_GRIND) else 1.5
+        for _ in range(2):
+            asked = time.time()
+            err = await send_frame(f)
+            if err:
+                return err
+            if await _wait_until(lambda: _echo_seen.get(code, 0) >= asked, wait, 0.05):
+                break
+        else:
+            log.warning("The machine did not accept the recipe %r (no echo for %d)", recipe.get("name"), code)
+            return RECIPE_NOT_ACCEPTED
+        await asyncio.sleep(0.3)
+    brew_session["loaded"] = True
+    return None
 
 
 def recipe_grinds(recipe: dict) -> bool:
@@ -1139,14 +1173,12 @@ async def _load_and_start(recipe) -> str | None:
         await reset_for_brew(recipe)
         return await start_nogrind(recipe)
     await leave_modules()
-    await reset_for_brew(recipe)
-    await asyncio.sleep(0.3)
-    for f in build_load_frames(recipe):
-        err = await send_frame(f)
-        if err:
-            return err
-        await asyncio.sleep(0.15)
+    await reset_for_brew(recipe, tare=False)
+    err = await send_recipe(recipe)
+    if err:
+        return err
     await asyncio.sleep(0.8)
+    brew_session["loaded"] = False
     return await send_frame(frame_execute())
 
 
@@ -1380,7 +1412,7 @@ class MachineState:
 
 
 # The recipe being brewed and what the user asked for, so a machine "wait" isn't shown as a pause
-brew_session = {"recipe": None, "user_paused": False, "user_stopped": False}
+brew_session = {"recipe": None, "user_paused": False, "user_stopped": False, "loaded": False}
 # The recipe of the brew in progress survives a Nuqta restart, so "brew without grinding" and the
 # screens still know what the machine is brewing.
 LAST_BREW_FILE = Path(__file__).parent / "last_brew.json"
@@ -1497,8 +1529,10 @@ def notify_finished(name: str, weight: float, demo: bool = False):
         asyncio.run_coroutine_threadsafe(_hub_agent_ws.send_str(push_envelope), main_loop)
 
 
-async def reset_for_brew(recipe: dict):
-    """Before a recipe starts: tare the scale and zero every number so the new brew starts clean."""
+async def reset_for_brew(recipe: dict, tare: bool = True):
+    """Before a recipe starts: zero every number so the new brew starts clean. tare=False for a
+    machine recipe: a tare opens the scale screen, which makes the machine ignore the recipe that
+    follows (the machine zeroes its scale itself after grinding)."""
     brew_session.update(recipe=recipe, user_paused=False, user_stopped=False)
     try:
         LAST_BREW_FILE.write_text(json.dumps(recipe))
@@ -1517,9 +1551,10 @@ async def reset_for_brew(recipe: dict):
     state.pour_clock = 0.0
     if state.activity == "Done":
         state.activity = "Ready"
-    err = await send_frame(frame_tare())
-    if err:
-        log.warning("Tare before brew failed: %s", err)
+    if tare:
+        err = await send_frame(frame_tare())
+        if err:
+            log.warning("Tare before brew failed: %s", err)
     await broadcast({"type": "brew_reset", "data": {"recipe": recipe.get("name", "")}})
     await broadcast({"type": "state", "data": state_payload()})
 
@@ -1731,6 +1766,7 @@ def on_notification(sender, data: bytearray):
         changed = True
         was_active = state.brew_active
 
+        _echo_seen[code] = time.time()
         if code in (CMD_BREWER_ENTER, CMD_BREWER_START, CMD_BREWER_STOP):
             brewer_dirty = True
         elif code == CMD_QUIT_BREWER:
@@ -1752,8 +1788,12 @@ def on_notification(sender, data: bytearray):
             act = struct.unpack_from("<I", payload)[0]
             state.activity_code = act
             if act == 31:
-                state.brew_active = True
-                _enter_pause_like()
+                # 31 is a pause during a brew, but also "recipe loaded, waiting for Brew" right after a
+                # load (8001), before anything has started. Only the first counts as a brew.
+                if state.brew_active:
+                    _enter_pause_like()
+                elif not state.finished:
+                    state.activity = "Ready"
             elif act in BREW_CODES:
                 state.brew_active = True
                 state.waiting = False
@@ -2001,7 +2041,7 @@ async def select_machine(name: str) -> dict:
     return await handle_connect_action()
 
 
-_TRACE_SENT = {CMD_BYPASS_DOSE, CMD_SET_CUP, CMD_RECIPE_GRIND, CMD_RECIPE_NO_GRIND, CMD_EXECUTE,
+_TRACE_SENT = {CMD_HANDSHAKE, CMD_BACK_TO_HOME, CMD_TARE, CMD_BYPASS_DOSE, CMD_SET_CUP, CMD_RECIPE_GRIND, CMD_RECIPE_NO_GRIND, CMD_EXECUTE,
                CMD_BREW_STOP, CMD_BREWER_START, CMD_BREWER_STOP, CMD_QUIT_BREWER, CMD_GRINDER_ENTER, CMD_GRINDER_START}
 
 
@@ -2224,17 +2264,12 @@ async def handle_recipe_send(request):
         return web.json_response({"ok": False, "error": "brew_running"})
     if not recipe_grinds(recipe):
         return web.json_response({"ok": False, "error": "no_grind"})   # the machine would grind it anyway
-    await leave_modules()
-    if state.activity_code in (4, 5):          # leave the scale screen too, so the machine shows the recipe
-        await send_frame(frame_quit_scale())
-        await asyncio.sleep(0.5)
+    await leave_modules()                      # also leaves the scale screen and sends the machine home
     # no tare here (that opens the machine's scale screen); the brew itself zeroes the scale
     brew_session.update(recipe=recipe, user_paused=False, user_stopped=False)
-    await asyncio.sleep(0.3)
-    for f in build_load_frames(recipe):
-        err = await send_confirmed(f)
-        if err:
-            return web.json_response({"ok": False, "error": err})
+    err = await send_recipe(recipe)
+    if err:
+        return web.json_response({"ok": False, "error": err})
     on_machine.add(name)
     _save_my_recipes()
     await _broadcast_recipes()
@@ -2407,19 +2442,23 @@ async def _run_ws_session(ws, peer: str = ""):
             elif action == "load_recipe":
                 recipe = cmd.get("recipe")
                 if recipe:
-                    await leave_modules()
-                    await reset_for_brew(recipe)
                     if recipe_grinds(recipe):
-                        await asyncio.sleep(0.3)
-                        for f in build_load_frames(recipe):
-                            result = await send_confirmed(f)
-                            if result:
-                                break
+                        await leave_modules()
+                        await reset_for_brew(recipe, tare=False)
+                        result = await send_recipe(recipe)
+                    else:
+                        brew_session["loaded"] = False
+                        await leave_modules()
+                        await reset_for_brew(recipe)
             elif action == "execute":
                 rec = brew_session.get("recipe")
                 if rec and not recipe_grinds(rec):
                     result = await start_nogrind(rec)      # pre-ground: pour it through the water screen
+                elif not brew_session.get("loaded"):
+                    # the machine didn't take the recipe: Brew would run whatever it had before
+                    result = RECIPE_NOT_ACCEPTED
                 else:
+                    brew_session["loaded"] = False
                     result = await send_confirmed(frame_execute())
             elif action == "quit_recipe":
                 result = await send_confirmed(frame_quit_recipe())

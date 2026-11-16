@@ -308,7 +308,8 @@ export default function App() {
         error: d.ok ? '' : d.error || '',
       }));
     } else if (msg.type === 'error') {
-      showToast(`${t('machineError', langRef.current)}: ${msg.msg}`, 'error');
+      if (msg.msg === 'recipe_not_accepted') showToast(t('recipeNotAccepted', langRef.current), 'error');
+      else showToast(`${t('machineError', langRef.current)}: ${msg.msg}`, 'error');
     } else if (msg.type === 'recipes') {
       const ordered = applyOrder(msg.data || [], savedOrderRef.current);
       setRecipes(ordered);
