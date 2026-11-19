@@ -34,7 +34,7 @@ export async function notifyReady(title, body) {
   try { navigator.vibrate?.([220, 120, 220, 120, 400]); } catch {}
   if (document.hidden) flashTitle(`☕ ${title}`);
   if (!canNotify() || Notification.permission !== 'granted') return;
-  const opts = { body, icon: '/nuqta-icon-192.png', badge: '/nuqta-icon-192.png', tag: 'nuqta-ready', renotify: true };
+  const opts = { body, icon: '/moodots-icon-192.png', badge: '/moodots-icon-192.png', tag: 'nuqta-ready', renotify: true };
   try {
     new Notification(title, opts);
   } catch {

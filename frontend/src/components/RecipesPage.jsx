@@ -4,38 +4,38 @@ import { LogoMark } from './Logo';
 import { isColdRecipe } from '../utils/recipes';
 
 // Recipes: list, view, create / edit, send to the machine. Design: nuqta-recipes-handoff (RecipeFlow).
-// Recipes made or edited here are stored by the Nuqta server (my_recipes.json); editing an xBloom or
-// starter recipe saves a Nuqta version that replaces it, and "Use the original" brings it back.
+// Recipes made or edited here are stored by the moodots server (my_recipes.json); editing an xBloom or
+// starter recipe saves a moodots version that replaces it, and "Use the original" brings it back.
 const TX = {
   en: {
-    sub: 'Nuqta · recipes', list: 'Recipes', create: 'Create recipe', newTitle: 'New recipe', editTitle: 'Edit recipe', back: 'Back',
+    sub: 'moodots · recipes', list: 'Recipes', create: 'Create recipe', newTitle: 'New recipe', editTitle: 'Edit recipe', back: 'Back',
     edit: 'Edit', del: 'Delete', restore: 'Use the original', all: 'All', hot: 'Hot', iced: 'Iced', onM: 'On machine', notM: 'Not on machine',
     pours: 'Pours', sec: 's', total: 'Total', addPour: 'Add pour', name: 'Recipe name', namePh: 'e.g. Morning V60', nameTaken: 'A recipe with this name already exists',
     kind: 'Type', dose: 'Coffee dose', grind: 'Grind size', temp: 'Water temperature', save: 'Save', saveSend: 'Save and send to machine', cancel: 'Cancel',
     send: 'Send to machine', resend: 'Send again', sendTitle: 'Send to machine', sending: 'Sending the recipe over Bluetooth…',
-    sent: 'Recipe is on your machine', sentHint: 'Nuqta loaded it onto the machine. Start it from the dashboard or from the machine.',
+    sent: 'Recipe is on your machine', sentHint: 'moodots loaded it onto the machine. Start it from the dashboard or from the machine.',
     done: 'Done', err: 'The machine is not connected. Turn it on, bring it near the computer and connect.', connect: 'Connect and retry', connecting: 'Connecting…',
-    errBusy: 'A brew is running. Send the recipe when it has finished.', errNoGrind: 'Recipes without grinding can’t be loaded onto the machine (it would grind anyway). Brew them from the dashboard: Nuqta pours them step by step.',
+    errBusy: 'A brew is running. Send the recipe when it has finished.', errNoGrind: 'Recipes without grinding can’t be loaded onto the machine (it would grind anyway). Brew them from the dashboard: moodots pours them step by step.',
     errOther: 'The machine didn’t take the recipe. Try again.',
     machOn: 'Machine connected', machOff: 'Machine disconnected', dosel: 'Dose', water: 'Water', ratio: 'Ratio', tempL: 'Temperature', grindL: 'Grind', poursL: 'Pours',
     noGrind: 'Off', saved: 'Recipe saved', deleted: 'Recipe deleted', restored: 'Original recipe is back', empty: 'No recipes here yet',
-    fromX: 'From your xBloom account', fromS: 'Built in', fromN: 'Made in Nuqta', changed: 'Changed in Nuqta',
+    fromX: 'From your xBloom account', fromS: 'Built in', fromN: 'Made in moodots', changed: 'Changed in moodots',
     pats: { 1: 'Center', 3: 'Circle', 2: 'Spiral' }, patsLong: { 1: 'Center pour', 3: 'Circle pour', 2: 'Spiral pour' },
     g: 'g', ml: 'ml',
   },
   ar: {
-    sub: 'نقطة · الوصفات', list: 'الوصفات', create: 'إنشاء وصفة', newTitle: 'وصفة جديدة', editTitle: 'تعديل الوصفة', back: 'رجوع',
+    sub: 'مودوتس · الوصفات', list: 'الوصفات', create: 'إنشاء وصفة', newTitle: 'وصفة جديدة', editTitle: 'تعديل الوصفة', back: 'رجوع',
     edit: 'تعديل', del: 'حذف', restore: 'استخدام الأصل', all: 'الكل', hot: 'ساخن', iced: 'مثلّج', onM: 'على الآلة', notM: 'ليست على الآلة',
     pours: 'الصبّات', sec: 'ث', total: 'المجموع', addPour: 'إضافة صبّة', name: 'اسم الوصفة', namePh: 'مثال: V60 الصباح', nameTaken: 'توجد وصفة بهذا الاسم',
     kind: 'النوع', dose: 'كمية القهوة', grind: 'درجة الطحن', temp: 'حرارة الماء', save: 'حفظ', saveSend: 'حفظ وإرسال إلى الآلة', cancel: 'إلغاء',
     send: 'إرسال إلى الآلة', resend: 'إرسال مرة أخرى', sendTitle: 'إرسال إلى الآلة', sending: 'جارٍ إرسال الوصفة عبر البلوتوث…',
-    sent: 'الوصفة على آلتك', sentHint: 'حمّلتها نقطة على الآلة. ابدأها من اللوحة أو من الآلة.',
+    sent: 'الوصفة على آلتك', sentHint: 'حمّلها مودوتس على الآلة. ابدأها من اللوحة أو من الآلة.',
     done: 'تم', err: 'الآلة غير متصلة. شغّلها وقرّبها من الكمبيوتر ثم اتصل.', connect: 'اتصال وإعادة المحاولة', connecting: 'جارٍ الاتصال…',
-    errBusy: 'يوجد تحضير جارٍ. أرسل الوصفة بعد انتهائه.', errNoGrind: 'الوصفات بدون طحن لا يمكن تحميلها على الآلة (ستطحن رغم ذلك). حضّرها من اللوحة، وتصبّها نقطة خطوة بخطوة.',
+    errBusy: 'يوجد تحضير جارٍ. أرسل الوصفة بعد انتهائه.', errNoGrind: 'الوصفات بدون طحن لا يمكن تحميلها على الآلة (ستطحن رغم ذلك). حضّرها من اللوحة، ويصبّها مودوتس خطوة بخطوة.',
     errOther: 'لم تستقبل الآلة الوصفة. حاول مرة أخرى.',
     machOn: 'الآلة متصلة', machOff: 'الآلة غير متصلة', dosel: 'الكمية', water: 'الماء', ratio: 'النسبة', tempL: 'الحرارة', grindL: 'الطحن', poursL: 'الصبّات',
     noGrind: 'بلا', saved: 'تم حفظ الوصفة', deleted: 'تم حذف الوصفة', restored: 'عادت الوصفة الأصلية', empty: 'لا توجد وصفات هنا بعد',
-    fromX: 'من حسابك في xBloom', fromS: 'مدمجة', fromN: 'صُنعت في نقطة', changed: 'معدّلة في نقطة',
+    fromX: 'من حسابك في xBloom', fromS: 'مدمجة', fromN: 'صُنعت في مودوتس', changed: 'معدّلة في مودوتس',
     pats: { 1: 'مركز', 3: 'دائري', 2: 'حلزوني' }, patsLong: { 1: 'صبّ مركزي', 3: 'صبّ دائري', 2: 'صبّ حلزوني' },
     g: 'غ', ml: 'مل',
   },

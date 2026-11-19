@@ -1,10 +1,10 @@
-// Web Push: subscribe this device so "coffee ready" reaches it even when Nuqta is closed.
+// Web Push: subscribe this device so "coffee ready" reaches it even when moodots is closed.
 // Needs a secure page (https). On iPhone/iPad the site must be added to the
 // Home Screen and opened from that icon first (Apple only allows push for installed web apps).
 
 import { REMOTE, getToken } from './remote';
 
-// Away from home (the /app page) the phone subscribes with the Nuqta server instead of the home computer.
+// Away from home (the /app page) the phone subscribes with the moodots server instead of the home computer.
 const SW = REMOTE ? ['/app/sw.js', '/app'] : ['/sw.js', '/'];
 const api = (path, body) => fetch(REMOTE ? `/push/${path}` : `/api/push/${path}`, {
   method: 'POST', headers: { 'Content-Type': 'application/json', ...(REMOTE ? { Authorization: `Bearer ${getToken()}` } : {}) },

@@ -1,4 +1,4 @@
-// What the free app includes; everything else is Nuqta Pro.
+// What the free app includes; everything else is moodots Pro.
 export const FREE_THEMES = ['copper', 'black', 'sand', 'ice'];
 export const FREE_STANDBY = ['cup', 'heart', 'dot'];
 export const PRO_PRICE_SAR = 49;

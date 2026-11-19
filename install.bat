@@ -1,7 +1,7 @@
 @echo off
-REM Nuqta installer for Windows - double-click it.
+REM moodots installer for Windows - double-click it.
 REM Sets up a private Python environment (.venv) in this folder, installs the
-REM packages, builds the dashboard, then starts Nuqta.
+REM packages, builds the dashboard, then starts moodots.
 cd /d "%~dp0"
 
 echo Checking Python and Node.js...
@@ -26,15 +26,16 @@ popd
 echo Setting up voice control...
 node -e "const[a,b]=process.versions.node.split('.').map(Number);process.exit(a>=23||(a===22&&b>=13)||(a===20&&b>=19)?0:1)" || goto :novoice
 pushd matter
-call npm install --silent --no-audit --no-fund || echo Voice control could not be installed - the rest of Nuqta works.
+call npm install --silent --no-audit --no-fund || echo Voice control could not be installed - the rest of moodots works.
 popd
 :aftervoice
 
 echo.
-echo Nuqta is installed. Next time, start it by double-clicking start-nuqta.bat
-REM NUQTA_NO_START is set by Claude Code / scripts: install only, don't start.
+echo moodots is installed. Next time, start it by double-clicking start-moodots.bat
+REM MOODOTS_NO_START (or the old name NUQTA_NO_START) is set by Claude Code / scripts: install only, don't start.
+if defined MOODOTS_NO_START exit /b 0
 if defined NUQTA_NO_START exit /b 0
-call start-nuqta.bat
+call start-moodots.bat
 exit /b 0
 
 :nopython
@@ -54,7 +55,7 @@ pause
 exit /b 1
 
 :novoice
-echo Voice control (Alexa / Apple Home / Google Home) needs Node.js 20.19 or newer. Skipped - the rest of Nuqta works.
+echo Voice control (Alexa / Apple Home / Google Home) needs Node.js 20.19 or newer. Skipped - the rest of moodots works.
 echo Update Node from https://nodejs.org and run this again to add it.
 goto :aftervoice
 

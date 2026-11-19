@@ -3,31 +3,31 @@ import Logo from './Logo';
 import { THEMES } from '../utils/themes';
 import { FREE_THEMES, PRO_PRICE_SAR, HUB_URL } from '../utils/pro';
 
-// "Get Nuqta Pro": what Pro adds, the one-time price, and how to unlock it.
+// "Get moodots Pro": what Pro adds, the one-time price, and how to unlock it.
 const TX = {
   ar: {
-    title: 'نقطة برو', price: 'ر.س', once: 'مرة واحدة · مدى الحياة',
-    activeTitle: 'نقطة برو مفعّلة', activeSub: 'كل الميزات مفتوحة على هذا الجهاز. شكراً لدعمك!',
+    title: 'مودوتس برو', price: 'ر.س', once: 'مرة واحدة · مدى الحياة',
+    activeTitle: 'مودوتس برو مفعّلة', activeSub: 'كل الميزات مفتوحة على هذا الجهاز. شكراً لدعمك!',
     f1: 'تحليلات التحضير', f1d: 'كم تحضّر وأوقاتك المفضلة، الوصفات الأكثر، ثبات الوزن، التقييمات، الماء، تكلفة الكوب والبن المستهلك.',
     f2: 'كل الثيمات', f2d: 'سعودي، الرياض، الدمام، الباحة، رمضاني ونيون.',
     f3: 'كل مشاهد الانتظار', f3d: 'الدلة، النخلة، الرياض، الدمام والباحة.',
     f6: 'التحكم الصوتي', f6d: 'أسماء صوتية لوصفاتك مع أليكسا، واختصارات Siri و NFC، وخيارات الأمان، وسجل الأوامر.',
-    f7: 'إشعارات الجهاز', f7d: 'إشعار «قهوتك جاهزة» على جوالك أو جهازك اللوحي حتى لو كان نقطة مغلقاً.',
+    f7: 'إشعارات الجهاز', f7d: 'إشعار «قهوتك جاهزة» على جوالك أو جهازك اللوحي حتى لو كان مودوتس مغلقاً.',
     f4: 'تحديثات تلقائية للميزات', f4d: 'تصلك ميزات برو الجديدة وتحديثاتها تلقائياً.',
-    f5: 'Nuqta Cloud', f5d: 'افتح نقطة من أي مكان عبر hub.nuqtasa.tools/app، وتنبيه «قهوتك جاهزة» على جوالك.',
+    f5: 'moodots Cloud', f5d: 'افتح مودوتس من أي مكان عبر hub.nuqtasa.tools/app، وتنبيه «قهوتك جاهزة» على جوالك.',
     get: 'احصل على برو', have: 'لدي برو · تسجيل الدخول', close: 'إغلاق',
     how: 'بعد الشراء سجّل الدخول هنا بنفس البريد، وتنفتح الميزات فوراً.',
   },
   en: {
-    title: 'Nuqta Pro', price: 'SAR', once: 'once · for life',
-    activeTitle: 'Nuqta Pro is active', activeSub: 'Every feature is unlocked on this device. Thanks for your support!',
+    title: 'moodots Pro', price: 'SAR', once: 'once · for life',
+    activeTitle: 'moodots Pro is active', activeSub: 'Every feature is unlocked on this device. Thanks for your support!',
     f1: 'Brew analytics', f1d: 'How much and when you brew, top recipes, dose consistency, ratings, water, cost per cup and beans used.',
     f2: 'Every theme', f2d: 'Saudi, Riyadh, Dammam, Al-Baha, Ramadan and Neon.',
     f3: 'Every standby scene', f3d: 'Dalla, Palm, Riyadh, Dammam and Al-Baha.',
     f6: 'Voice control', f6d: 'Voice names for your recipes with Alexa, Siri and NFC shortcuts, safety options and a command log.',
-    f7: 'Device notifications', f7d: 'A "coffee ready" alert on your phone or tablet, even when Nuqta is closed.',
+    f7: 'Device notifications', f7d: 'A "coffee ready" alert on your phone or tablet, even when moodots is closed.',
     f4: 'Feature updates, automatically', f4d: 'New Pro features and updates arrive on their own.',
-    f5: 'Nuqta Cloud', f5d: 'Open Nuqta from anywhere at hub.nuqtasa.tools/app, with "coffee ready" alerts on your phone.',
+    f5: 'moodots Cloud', f5d: 'Open moodots from anywhere at hub.nuqtasa.tools/app, with "coffee ready" alerts on your phone.',
     get: 'Get Pro', have: 'I have Pro · sign in', close: 'Close',
     how: 'After you buy, sign in here with the same email and everything unlocks right away.',
   },

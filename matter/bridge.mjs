@@ -1,11 +1,11 @@
-// Nuqta as a local Matter bridge.
+// moodots as a local Matter bridge.
 //
 // Alexa (Echo), Apple Home and Google Home pair with this bridge on the home
 // network using an 11-digit setup code; no cloud, no skill. Each device the
-// user chose on Nuqta's Voice page appears as an on/off plug. Started and
+// user chose on moodots' Voice page appears as an on/off plug. Started and
 // restarted by server.py whenever the chosen devices change.
 //
-//   NUQTA_URL         http://127.0.0.1:8420  (the Nuqta server on this computer)
+//   NUQTA_URL         http://127.0.0.1:8420  (the moodots server on this computer)
 //   MATTER_STORAGE_PATH  folder that keeps the pairing (read by the Matter library itself)
 //   MATTER_PORT       5540
 
@@ -25,7 +25,7 @@ async function nuqta(path, body) {
 }
 
 let cfg;
-for (let i = 0; ; i++) {                       // Nuqta may still be starting up
+for (let i = 0; ; i++) {                       // moodots may still be starting up
   try { cfg = await nuqta("/api/voice/matter"); break; }
   catch (e) { if (i > 60) throw e; await new Promise((r) => setTimeout(r, 2000)); }
 }
@@ -35,6 +35,8 @@ const server = await ServerNode.create({
   id: "nuqta",
   network: { port: Number(process.env.MATTER_PORT || 5540) },
   commissioning: { passcode: cfg.passcode, discriminator: cfg.discriminator },
+  // The Matter identity below keeps the old name (Nuqta) on purpose: changing it could unpair
+  // devices people already added to Alexa / Apple Home / Google Home.
   productDescription: { name: "Nuqta", deviceType: AggregatorEndpoint.deviceType },
   basicInformation: {
     vendorName: "Nuqta", vendorId: VendorId(0xfff1), nodeLabel: "Nuqta",
@@ -94,7 +96,7 @@ server.lifecycle.commissioned.on(report);
 server.lifecycle.decommissioned?.on?.(report);
 await server.start();
 await report();
-console.log(`Nuqta Matter bridge ready: ${devices.length} device(s), code ${server.state.commissioning.pairingCodes.manualPairingCode}`);
+console.log(`moodots Matter bridge ready: ${devices.length} device(s), code ${server.state.commissioning.pairingCodes.manualPairingCode}`);
 
 // keep each plug's on/off in step with the machine
 setInterval(async () => {

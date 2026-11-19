@@ -1,6 +1,6 @@
 const translations = {
   en: {
-    brandName: 'Nuqta',
+    brandName: 'moodots',
     brandFor: 'for',
     connect: 'Connect',
     disconnect: 'Disconnect',
@@ -241,7 +241,7 @@ const translations = {
     demoHint: 'Play a simulated brew — nothing is sent to the machine',
   },
   ar: {
-    brandName: 'نُقطة',
+    brandName: 'مودوتس',
     brandFor: 'لأجهزة',
     connect: 'اتصال',
     disconnect: 'قطع الاتصال',

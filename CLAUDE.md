@@ -1,6 +1,6 @@
-# Setting up Nuqta with Claude Code
+# Setting up moodots with Claude Code
 
-You are helping someone install and run **Nuqta**, a free dashboard that controls an **xBloom**
+You are helping someone install and run **moodots** (مودوتس; called Nuqta before November 2026), a free dashboard that controls an **xBloom**
 coffee machine over Bluetooth from their own computer. Many people asking are not developers:
 explain each step in one plain sentence, run the commands yourself, and stop to ask only when they
 must do something (install a program, click a permission prompt, turn the machine on).
@@ -10,7 +10,7 @@ Reply in the language they write in (Arabic or English).
 ## 1. Check what they have
 Detect the OS first, then check:
 - `python3 --version` (Windows: `py -3 --version` or `python --version`) — needs **3.10+**
-- `node --version` — needs **20.19+** (18 runs Nuqta, but voice control is skipped; the installer says so)
+- `node --version` — needs **20.19+** (18 runs moodots, but voice control is skipped; the installer says so)
 - `git --version` — only needed if they want updates via git
 
 If Python or Node is missing, tell them exactly what to install and wait:
@@ -18,26 +18,26 @@ If Python or Node is missing, tell them exactly what to install and wait:
 - Windows: python.org/downloads (tell them to tick **"Add python.exe to PATH"**) and nodejs.org (LTS)
 - Linux: their package manager, e.g. `sudo apt install python3 python3-venv nodejs npm` — check the
   Node version afterwards: Debian 12 / Raspberry Pi OS Bookworm and older Ubuntu ship Node 18 (fine for
-  Nuqta, no voice control). Raspberry Pi OS 13 Trixie ships 20.19+.
+  moodots, no voice control). Raspberry Pi OS 13 Trixie ships 20.19+.
 
 The computer must have Bluetooth and stay near the xBloom.
 
 ## 2. Get the code
-If you're not already inside the `nuqta-app` folder, clone it and work from there:
+If you're not already inside the `moodots-app` folder (an older install may be named `nuqta-app`), clone it and work from there:
 ```
-git clone https://github.com/JustMuath1/nuqta-app.git
-cd nuqta-app
+git clone https://github.com/JustMuath1/moodots-app.git
+cd moodots-app
 ```
 
 ## 3. Install
-Run the installer for their OS with `NUQTA_NO_START=1` so it installs without starting the server
+Run the installer for their OS with `MOODOTS_NO_START=1` so it installs without starting the server
 (you start it properly in step 4). It creates a private Python environment in `.venv`, installs
 `requirements.txt`, and builds the dashboard. Nothing is installed system-wide — this also avoids
 Homebrew Python's "externally managed environment" error.
-- macOS: `NUQTA_NO_START=1 zsh install.command`
-- Linux: `NUQTA_NO_START=1 bash install.sh`
-- Windows (cmd): `set NUQTA_NO_START=1 && install.bat` — or in PowerShell:
-  `$env:NUQTA_NO_START=1; .\install.bat`
+- macOS: `MOODOTS_NO_START=1 zsh install.command`
+- Linux: `MOODOTS_NO_START=1 bash install.sh`
+- Windows (cmd): `set MOODOTS_NO_START=1 && install.bat` — or in PowerShell:
+  `$env:MOODOTS_NO_START=1; .\install.bat`
 
 It prints ✓ lines as it goes. If it stops with ✗, read the message — it says what's missing.
 
@@ -48,12 +48,12 @@ Manual fallback only if the installer can't run: `python3 -m venv .venv`, then
 ## 4. Start it
 The server keeps running, so don't start it as a blocking command in your own shell — open it in
 its own window:
-- **macOS:** `open -a Terminal start-nuqta.command`. It must run from Terminal.app so macOS can
+- **macOS:** `open -a Terminal start-moodots.command`. It must run from Terminal.app so macOS can
   grant Bluetooth. **Tell them a Bluetooth permission prompt will appear and they must click
   Allow.**
-- **Windows:** `start "" start-nuqta.bat` (opens a new window). If Windows Firewall asks about
+- **Windows:** `start "" start-moodots.bat` (opens a new window). If Windows Firewall asks about
   Python, they should allow it on private networks.
-- **Linux:** run `./start-nuqta.sh` in a separate terminal window, or in the background with its
+- **Linux:** run `./start-moodots.sh` in a separate terminal window, or in the background with its
   output logged to a file. If Bluetooth is off: `sudo systemctl enable --now bluetooth`.
 
 Then confirm it's up: `curl -s localhost:8420/api/state` (or open http://localhost:8420).
@@ -63,8 +63,8 @@ Then confirm it's up: `curl -s localhost:8420/api/state` (or open http://localho
 - On a phone or tablet on the same Wi-Fi: the `http://<this-computer's-IP>:8420` address the start
   window prints. In Safari: **Share → Add to Home Screen**.
 - Turn the xBloom on — it connects by itself; the header shows "connected".
-- Next time they only need the start script: `start-nuqta.command` (macOS), `start-nuqta.bat`
-  (Windows), `./start-nuqta.sh` (Linux).
+- Next time they only need the start script: `start-moodots.command` (macOS), `start-moodots.bat`
+  (Windows), `./start-moodots.sh` (Linux). The old `start-nuqta.*` names still work.
 
 ## Optional
 - **Their own xBloom recipes:** copy `xbloom_config.example.json` to `xbloom_config.json` and have
@@ -72,16 +72,17 @@ Then confirm it's up: `curl -s localhost:8420/api/state` (or open http://localho
   password into chat). It's git-ignored and stays on their computer.
 - **Fonts:** the UI prefers the licensed "Thmanyah" font and falls back to IBM Plex Sans Arabic. To
   use Thmanyah, put its `.woff2`/`.otf` files in a `fonts/` folder.
-- **Nuqta Pro** (49 SAR once, for life) unlocks brew analytics, every theme and every standby scene, the voice control page, device
-  notifications, automatic feature updates and Nuqta Cloud (basic "Alexa, turn on coffee" stays free);
+- **moodots Pro** (49 SAR once, for life) unlocks brew analytics, every theme and every standby scene, the voice control page, device
+  notifications, automatic feature updates and moodots Cloud (basic "Alexa, turn on coffee" stays free);
   the free app has 4 themes and 3 standby scenes. They request it at https://hub.nuqtasa.tools (online
-  payment isn't live; the owner contacts them, then a "Nuqta Pro is active" email arrives), then in
-  the app: **Settings → Nuqta Pro** → sign in with the same email (a 6-digit code arrives by email).
-  Nuqta Cloud (remote access at hub.nuqtasa.tools/app, phone alerts) is included with Pro and works
+  payment isn't live; the owner contacts them, then a "moodots Pro is active" email arrives), then in
+  the app: **Settings → moodots Pro** → sign in with the same email (a 6-digit code arrives by email).
+  moodots Cloud (remote access at hub.nuqtasa.tools/app, phone alerts) is included with Pro and works
   today. Cloud backup of recipes and settings does not exist — don't promise it.
 
 ## Updating
-macOS: `zsh nuqta-update.command` (pulls, updates packages, rebuilds, restarts). Others: `git pull`,
+macOS: `zsh moodots-update.command` (pulls, updates packages, rebuilds, restarts; on old installs
+`nuqta-update.command` does the same). Others: `git pull`,
 then run the installer again (step 3) and restart (step 4). Their recipes, settings and history are
 kept — they're in git-ignored files.
 If the folder has no `.git` (a ZIP install), `git pull` and the update script can't download anything:
@@ -94,7 +95,7 @@ folder to use from now on.
   Security → Bluetooth must allow Terminal, and the server must have been started from Terminal.app.
 - **Phone can't open the address:** same Wi-Fi as the computer, and the computer's firewall must
   allow incoming connections for Python.
-- **Port 8420 in use:** the start scripts stop an old Nuqta first. If it persists — macOS/Linux:
+- **Port 8420 in use:** the start scripts stop an old moodots first. If it persists — macOS/Linux:
   `lsof -tiTCP:8420 | xargs kill`; Windows: `netstat -ano | findstr :8420`, then
   `taskkill /PID <pid> /F`.
 - **`ModuleNotFoundError`:** packages aren't in the Python being used — run the installer again;

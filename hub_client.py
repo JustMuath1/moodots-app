@@ -1,4 +1,4 @@
-"""Nuqta Cloud — this app's client for the Nuqta Cloud hub (optional).
+"""moodots Cloud — this app's client for the moodots Cloud hub (optional).
 
 Off unless nuqta_cloud.json exists (git-ignored) with a hub_url and a
 signed-in agent token. Nothing here ever talks to any server unless this
@@ -61,7 +61,7 @@ def _device_label() -> str:
     try:
         return socket.gethostname()[:80]
     except Exception:
-        return "Nuqta"
+        return "moodots"
 
 
 class HubClient:
@@ -80,14 +80,14 @@ class HubClient:
         try:
             d = json.loads(CONFIG_FILE.read_text())
             if (d.get("hub_url") or "").rstrip("/") != HUB_URL:
-                log.warning("Saved Nuqta account is for a different server — signed out")
+                log.warning("Saved moodots account is for a different server — signed out")
                 return
             self.hub_url = HUB_URL
             self.email = d.get("email", "")
             self.session_token = d.get("session_token", "")
             self.agent_token = d.get("agent_token", "")
         except Exception as e:
-            log.warning("Nuqta Cloud config unreadable (%s) — treating as signed out", e)
+            log.warning("moodots Cloud config unreadable (%s) — treating as signed out", e)
 
     def _save(self) -> None:
         try:
@@ -96,7 +96,7 @@ class HubClient:
                 "session_token": self.session_token, "agent_token": self.agent_token,
             }))
         except Exception as e:
-            log.warning("Nuqta Cloud config save failed: %s", e)
+            log.warning("moodots Cloud config save failed: %s", e)
 
     @property
     def configured(self) -> bool:
@@ -113,7 +113,7 @@ class HubClient:
                         return {"ok": False, "error": data.get("error", "request_failed")}
                     return {"ok": True}
         except Exception as e:
-            log.warning("Nuqta Cloud request-code failed: %s", e)
+            log.warning("moodots Cloud request-code failed: %s", e)
             return {"ok": False, "error": "unreachable"}
 
     async def verify_code(self, hub_url: str, email: str, code: str) -> dict:
@@ -128,7 +128,7 @@ class HubClient:
                     if r.status != 200:
                         return {"ok": False, "error": data.get("error", "verify_failed")}
         except Exception as e:
-            log.warning("Nuqta Cloud verify failed: %s", e)
+            log.warning("moodots Cloud verify failed: %s", e)
             return {"ok": False, "error": "unreachable"}
 
         self.hub_url = hub_url
@@ -167,7 +167,7 @@ class HubClient:
                         self._account_cache_at = time.time()
                         return {"configured": True, **data}
         except Exception as e:
-            log.warning("Nuqta Cloud account check failed: %s", e)
+            log.warning("moodots Cloud account check failed: %s", e)
         if self._account_cache:
             return {"configured": True, **self._account_cache}
         return {"configured": True, "active": False, "error": "unreachable"}

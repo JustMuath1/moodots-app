@@ -1,7 +1,7 @@
 #!/bin/zsh
-# Nuqta installer for macOS — double-click it, or run:  zsh install.command
+# moodots installer for macOS — double-click it, or run:  zsh install.command
 # Sets up a private Python environment (.venv) in this folder, installs the
-# packages, builds the dashboard, then offers to start Nuqta.
+# packages, builds the dashboard, then offers to start moodots.
 cd "$(dirname "$0")"
 ok()   { print -P "%F{green}✓ $1%f"; }
 step() { print -P "%F{cyan}▸ $1%f"; }
@@ -23,17 +23,18 @@ ok "Python packages installed."
 step "Building the dashboard…"
 (cd frontend && npm install --silent && npm run build --silent) || fail "The dashboard build failed — see the messages above."
 if node -e 'const[a,b]=process.versions.node.split(".").map(Number);process.exit(a>=23||(a===22&&b>=13)||(a===20&&b>=19)?0:1)'; then
-  (cd matter && npm install --silent --no-audit --no-fund) || echo "Voice control (Alexa / Apple Home / Google Home) could not be installed — the rest of Nuqta works."
+  (cd matter && npm install --silent --no-audit --no-fund) || echo "Voice control (Alexa / Apple Home / Google Home) could not be installed — the rest of moodots works."
 else
-  echo "Voice control (Alexa / Apple Home / Google Home) needs Node.js 20.19 or newer — you have $(node -v). Skipped; the rest of Nuqta works. Update Node from https://nodejs.org and run this again to add it."
+  echo "Voice control (Alexa / Apple Home / Google Home) needs Node.js 20.19 or newer — you have $(node -v). Skipped; the rest of moodots works. Update Node from https://nodejs.org and run this again to add it."
 fi
 ok "Dashboard built."
 
 print ""
-ok "Nuqta is installed."
-print "Next time, start it by double-clicking start-nuqta.command."
-[[ -n "$NUQTA_NO_START" ]] && exit 0   # set by Claude Code / scripts: install only
-print -n "Start Nuqta now? [Y/n] "
+ok "moodots is installed."
+print "Next time, start it by double-clicking start-moodots.command."
+# set by Claude Code / scripts: install only (NUQTA_NO_START is the old name, still accepted)
+[[ -n "$MOODOTS_NO_START$NUQTA_NO_START" ]] && exit 0
+print -n "Start moodots now? [Y/n] "
 read reply
 [[ "$reply" == [nN]* ]] && exit 0
-exec ./start-nuqta.command
+exec ./start-moodots.command
