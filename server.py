@@ -686,9 +686,7 @@ PRO_DIR = Path(__file__).parent / "pro_pack"
 PRO_STATE_FILE = PRO_DIR / "state.json"
 PRO_GRACE_S = 30 * 86400           # stay unlocked offline for 30 days after the last good check
 PRO_CHECK_EVERY_S = 6 * 3600
-# A full owner checkout keeps the Pro files next to server.py: always Pro there.
-PRO_OWNER_BUILD = HAS_ANALYTICS and (Path(__file__).parent / "analytics_db.py").exists()
-_pro = {"active": PRO_OWNER_BUILD, "checked": 0.0}
+_pro = {"active": False, "checked": 0.0}
 
 
 def _pro_state_read() -> dict:
@@ -711,8 +709,6 @@ def _pro_state_write(**kw) -> None:
 def _load_pro_pack(reload: bool = False) -> bool:
     """Import the downloaded analytics modules (or reload them after an update)."""
     global brewlog, HAS_ANALYTICS
-    if PRO_OWNER_BUILD:
-        return True
     if not (PRO_DIR / "analytics_db.py").exists():
         return False
     try:
@@ -765,8 +761,6 @@ async def _sync_pro_pack() -> None:
 
 async def refresh_pro(force: bool = False) -> bool:
     """Ask the hub whether this account has Pro; fetch analytics if it does."""
-    if PRO_OWNER_BUILD:
-        return True
     hub = hub_client.hub
     if not hub.configured:
         _pro["active"] = False
@@ -792,7 +786,7 @@ async def refresh_pro(force: bool = False) -> bool:
 
 async def pro_loop() -> None:
     _load_pro_pack()  # use what's already downloaded straight away
-    if not PRO_OWNER_BUILD and _pro_state_read().get("active_at") and hub_client.hub.configured:
+    if _pro_state_read().get("active_at") and hub_client.hub.configured:
         _pro["active"] = time.time() - _pro_state_read()["active_at"] < PRO_GRACE_S
     while True:
         try:
@@ -3405,9 +3399,8 @@ async def handle_hub_verify(request):
 
 async def handle_hub_signout(request):
     hub_client.hub.sign_out()
-    if not PRO_OWNER_BUILD:
-        _pro["active"] = False
-        _pro_state_write(active_at=0)
+    _pro["active"] = False
+    _pro_state_write(active_at=0)
     if _hub_agent_ws is not None and not _hub_agent_ws.closed:
         await _hub_agent_ws.close()  # drop remote access right away
     if _hub_wake is not None:
