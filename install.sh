@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Nuqta installer for Linux — run:  bash install.sh
+# moodots installer for Linux — run:  bash install.sh
 # Sets up a private Python environment (.venv) in this folder, installs the
-# packages, builds the dashboard, then offers to start Nuqta.
+# packages, builds the dashboard, then offers to start moodots.
 cd "$(dirname "$0")"
 ok()   { printf '\033[32m✓ %s\033[0m\n' "$1"; }
 step() { printf '\033[36m▸ %s\033[0m\n' "$1"; }
@@ -23,15 +23,16 @@ ok "Python packages installed."
 step "Building the dashboard…"
 (cd frontend && npm install --silent && npm run build --silent) || fail "The dashboard build failed — see the messages above."
 if node -e 'const[a,b]=process.versions.node.split(".").map(Number);process.exit(a>=23||(a===22&&b>=13)||(a===20&&b>=19)?0:1)'; then
-  (cd matter && npm install --silent --no-audit --no-fund) || echo "Voice control (Alexa / Apple Home / Google Home) could not be installed — the rest of Nuqta works."
+  (cd matter && npm install --silent --no-audit --no-fund) || echo "Voice control (Alexa / Apple Home / Google Home) could not be installed — the rest of moodots works."
 else
-  echo "Voice control (Alexa / Apple Home / Google Home) needs Node.js 20.19 or newer — you have $(node -v). Skipped; the rest of Nuqta works. Update Node from https://nodejs.org and run this again to add it."
+  echo "Voice control (Alexa / Apple Home / Google Home) needs Node.js 20.19 or newer — you have $(node -v). Skipped; the rest of moodots works. Update Node from https://nodejs.org and run this again to add it."
 fi
 ok "Dashboard built."
 
 echo
-ok "Nuqta is installed. Start it any time with: ./start-nuqta.sh"
-[ -n "$NUQTA_NO_START" ] && exit 0   # set by Claude Code / scripts: install only
-read -r -p "Start Nuqta now? [Y/n] " reply
+ok "moodots is installed. Start it any time with: ./start-moodots.sh"
+# set by Claude Code / scripts: install only (NUQTA_NO_START is the old name, still accepted)
+[ -n "$MOODOTS_NO_START$NUQTA_NO_START" ] && exit 0
+read -r -p "Start moodots now? [Y/n] " reply
 case "$reply" in [nN]*) exit 0 ;; esac
-exec ./start-nuqta.sh
+exec ./start-moodots.sh

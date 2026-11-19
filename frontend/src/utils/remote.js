@@ -1,4 +1,4 @@
-// Remote mode: the dashboard opened through the Nuqta server (away from home)
+// Remote mode: the dashboard opened through the moodots server (away from home)
 // instead of from the home computer. The server sets window.__NUQTA_REMOTE__.
 // At home none of this runs.
 export const REMOTE = typeof window !== 'undefined' && Boolean(window.__NUQTA_REMOTE__);
@@ -18,7 +18,7 @@ export const getEmail = () => store.get(EMAIL_KEY);
 export const savedLang = () => store.get(LANG_KEY);
 export const saveLang = (l) => store.set(LANG_KEY, l);
 
-// ---- the Nuqta server (sign-in and status) --------------------------------
+// ---- the moodots server (sign-in and status) --------------------------------
 async function hub(path, { method = 'GET', body, auth = false } = {}) {
   const headers = {};
   if (body) headers['Content-Type'] = 'application/json';

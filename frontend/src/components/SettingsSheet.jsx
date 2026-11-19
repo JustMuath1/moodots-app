@@ -5,8 +5,8 @@ import { t } from '../utils/i18n';
 // small screens don't crowd the header. Shown from the gear button; on wide screens those controls
 // stay inline in the header instead.
 const TX = {
-  ar: { pro: 'نقطة برو', proOn: 'مفعّلة', proOff: 'التحليلات وكل الثيمات والمشاهد', proGet: 'احصل عليها', proAccount: 'الحساب', cloud: 'Nuqta Cloud', cloudOpen: 'فتح', title: 'الإعدادات', language: 'اللغة', fullscreen: 'ملء الشاشة', fsOn: 'تشغيل', fsOff: 'إيقاف', restart: 'إعادة تشغيل الخادم', restarting: 'جارٍ…', account: 'حساب xBloom', accountOpen: 'فتح', close: 'إغلاق' },
-  en: { pro: 'Nuqta Pro', proOn: 'Active', proOff: 'Analytics, every theme and scene', proGet: 'Get Pro', proAccount: 'Account', cloud: 'Nuqta Cloud', cloudOpen: 'Open', title: 'Settings', language: 'Language', fullscreen: 'Fullscreen', fsOn: 'On', fsOff: 'Off', restart: 'Restart server', restarting: 'Restarting…', account: 'xBloom account', accountOpen: 'Open', close: 'Close' },
+  ar: { pro: 'مودوتس برو', proOn: 'مفعّلة', proOff: 'التحليلات وكل الثيمات والمشاهد', proGet: 'احصل عليها', proAccount: 'الحساب', cloud: 'moodots Cloud', cloudOpen: 'فتح', title: 'الإعدادات', language: 'اللغة', fullscreen: 'ملء الشاشة', fsOn: 'تشغيل', fsOff: 'إيقاف', restart: 'إعادة تشغيل الخادم', restarting: 'جارٍ…', account: 'حساب xBloom', accountOpen: 'فتح', close: 'إغلاق' },
+  en: { pro: 'moodots Pro', proOn: 'Active', proOff: 'Analytics, every theme and scene', proGet: 'Get Pro', proAccount: 'Account', cloud: 'moodots Cloud', cloudOpen: 'Open', title: 'Settings', language: 'Language', fullscreen: 'Fullscreen', fsOn: 'On', fsOff: 'Off', restart: 'Restart server', restarting: 'Restarting…', account: 'xBloom account', accountOpen: 'Open', close: 'Close' },
 };
 
 export default function SettingsSheet({ lang, fullscreen, onToggleLang, onRestart, onOpenAccount, onOpenCloud, onOpenPro, pro, remoteEmail, onSignOut, onOpenVoice, onOpenRecipes, onClose }) {

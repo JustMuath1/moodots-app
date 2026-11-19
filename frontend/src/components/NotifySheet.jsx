@@ -5,19 +5,19 @@ import { pushState, pushSubscribe, pushUnsubscribe, pushTest } from '../utils/pu
 // added to the Home Screen first — the sheet explains that when needed.
 const TX = {
   ar: {
-    title: 'التنبيهات', notifHead: 'إشعارات الجهاز', soundHead: 'صوت التنبيه', soundSub: 'رنّة عند جاهزية القهوة على هذا الجهاز', body: 'استلم إشعار «قهوتك جاهزة» على هذا الجهاز حتى لو كان نقطة مغلقاً.',
+    title: 'التنبيهات', notifHead: 'إشعارات الجهاز', soundHead: 'صوت التنبيه', soundSub: 'رنّة عند جاهزية القهوة على هذا الجهاز', body: 'استلم إشعار «قهوتك جاهزة» على هذا الجهاز حتى لو كان مودوتس مغلقاً.',
     on: 'تفعيل الإشعارات', off: 'إيقاف الإشعارات', test: 'إرسال إشعار تجريبي', close: 'إغلاق', sent: 'أُرسل ✓', enabled: 'الإشعارات مفعّلة على هذا الجهاز',
-    install: 'على الآيفون/الآيباد: افتح الرابط في سفاري ← زر المشاركة ← «أضف إلى الشاشة الرئيسية»، ثم افتح نقطة من الأيقونة وفعّل الإشعارات من هنا.',
+    install: 'على الآيفون/الآيباد: افتح الرابط في سفاري ← زر المشاركة ← «أضف إلى الشاشة الرئيسية»، ثم افتح مودوتس من الأيقونة وفعّل الإشعارات من هنا.',
     unsupported: 'هذا المتصفح لا يدعم الإشعارات، أو الصفحة ليست آمنة. افتحه عبر https.',
-    proOnly: 'إشعارات الجهاز ضمن نقطة برو.', getPro: 'احصل على برو',
+    proOnly: 'إشعارات الجهاز ضمن مودوتس برو.', getPro: 'احصل على برو',
     serverOff: 'الإشعارات غير مهيأة على الخادم بعد.', denied: 'رُفض الإذن. فعّله من إعدادات المتصفح ثم أعد المحاولة.',
   },
   en: {
-    title: 'Alerts', notifHead: 'Device notifications', soundHead: 'Alert sound', soundSub: 'A chime when the coffee is ready, on this device', body: 'Get a "coffee ready" alert on this device even when Nuqta is closed.',
+    title: 'Alerts', notifHead: 'Device notifications', soundHead: 'Alert sound', soundSub: 'A chime when the coffee is ready, on this device', body: 'Get a "coffee ready" alert on this device even when moodots is closed.',
     on: 'Turn on notifications', off: 'Turn off', test: 'Send a test', close: 'Close', sent: 'Sent ✓', enabled: 'Notifications are on for this device',
-    install: 'On iPhone/iPad: open the link in Safari → Share → Add to Home Screen, then open Nuqta from that icon and turn notifications on here.',
+    install: 'On iPhone/iPad: open the link in Safari → Share → Add to Home Screen, then open moodots from that icon and turn notifications on here.',
     unsupported: 'This browser can’t do notifications, or the page isn’t secure. Open the site over https.',
-    proOnly: 'Device notifications are part of Nuqta Pro.', getPro: 'Get Pro',
+    proOnly: 'Device notifications are part of moodots Pro.', getPro: 'Get Pro',
     serverOff: 'Notifications aren’t set up on the server yet.', denied: 'Permission was blocked. Allow it in the browser settings and try again.',
   },
 };

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-// Nuqta Cloud sign-in: links this home to the owner's account on the hub, so a
+// moodots Cloud sign-in: links this home to the owner's account on the hub, so a
 // phone can reach it from anywhere and brew-done alerts go through the hub.
 // Email -> 6-digit code -> connected. The server does the talking to the hub
 // (/api/hub/*); this sheet only drives it.
@@ -8,32 +8,32 @@ const HUB_URL = 'https://hub.nuqtasa.tools';
 
 const TX = {
   ar: {
-    title: 'حساب نقطة برو', intro: 'سجّل الدخول بالبريد الذي اشتريت به نقطة برو، وتنفتح التحليلات وكل الثيمات والمشاهد على هذا الجهاز.',
+    title: 'حساب مودوتس برو', intro: 'سجّل الدخول بالبريد الذي اشتريت به مودوتس برو، وتنفتح التحليلات وكل الثيمات والمشاهد على هذا الجهاز.',
     email: 'البريد الإلكتروني', send: 'أرسل الرمز', sending: 'جارٍ الإرسال…',
     codeSent: 'أرسلنا رمزاً من ٦ أرقام إلى', code: 'الرمز', verify: 'تأكيد', verifying: 'جارٍ التأكيد…',
     back: 'تغيير البريد', close: 'إغلاق', signout: 'تسجيل الخروج',
-    account: 'الحساب', status: 'نقطة برو', link: 'Nuqta Cloud',
+    account: 'الحساب', status: 'مودوتس برو', link: 'moodots Cloud',
     active: 'مفعّلة', inactive: 'غير مفعّلة', connected: 'متصل', connecting: 'جارٍ الاتصال…', offline: 'غير متصل',
     monthly: 'شهري', yearly: 'سنوي', lifetime: 'مدى الحياة', until: 'حتى',
-    notSubscribed: 'تم ربط الجهاز، لكن لا توجد نقطة برو على هذا البريد بعد.',
+    notSubscribed: 'تم ربط الجهاز، لكن لا يوجد اشتراك مودوتس برو على هذا البريد بعد.',
     errors: {
       invalid_email: 'البريد غير صحيح.', rate_limited: 'انتظر قليلاً ثم أعد المحاولة.',
-      invalid_code: 'الرمز غير صحيح. أعد كتابته.', expired_code: 'انتهت صلاحية الرمز. اطلب رمزاً جديداً.', unreachable: 'تعذّر الوصول إلى Nuqta Cloud. تحقق من الإنترنت.',
+      invalid_code: 'الرمز غير صحيح. أعد كتابته.', expired_code: 'انتهت صلاحية الرمز. اطلب رمزاً جديداً.', unreachable: 'تعذّر الوصول إلى moodots Cloud. تحقق من الإنترنت.',
       send_failed: 'تعذّر إرسال البريد. حاول لاحقاً.', default: 'حدث خطأ. حاول مرة أخرى.',
     },
   },
   en: {
-    title: 'Nuqta Pro account', intro: 'Sign in with the email you bought Nuqta Pro with, and analytics, every theme and every standby scene unlock on this device.',
+    title: 'moodots Pro account', intro: 'Sign in with the email you bought moodots Pro with, and analytics, every theme and every standby scene unlock on this device.',
     email: 'Email', send: 'Send code', sending: 'Sending…',
     codeSent: 'We sent a 6-digit code to', code: 'Code', verify: 'Verify', verifying: 'Verifying…',
     back: 'Change email', close: 'Close', signout: 'Sign out',
-    account: 'Account', status: 'Nuqta Pro', link: 'Nuqta Cloud',
+    account: 'Account', status: 'moodots Pro', link: 'moodots Cloud',
     active: 'Active', inactive: 'Not active', connected: 'Connected', connecting: 'Connecting…', offline: 'Offline',
     monthly: 'Monthly', yearly: 'Yearly', lifetime: 'Lifetime', until: 'until',
-    notSubscribed: 'This device is linked, but there’s no Nuqta Pro on this email yet.',
+    notSubscribed: 'This device is linked, but there’s no moodots Pro on this email yet.',
     errors: {
       invalid_email: 'That email doesn’t look right.', rate_limited: 'Wait a moment, then try again.',
-      invalid_code: 'That code isn’t right. Type it again.', expired_code: 'This code has expired. Ask for a new one.', unreachable: 'Can’t reach Nuqta Cloud. Check the internet.',
+      invalid_code: 'That code isn’t right. Type it again.', expired_code: 'This code has expired. Ask for a new one.', unreachable: 'Can’t reach moodots Cloud. Check the internet.',
       send_failed: 'Couldn’t send the email. Try again later.', default: 'Something went wrong. Try again.',
     },
   },

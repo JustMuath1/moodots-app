@@ -680,8 +680,8 @@ except Exception as _e:
         from datetime import datetime, timezone
         return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
-# ---- Nuqta Pro: brew analytics, every theme and standby scene -----------------
-# Unlocked by an active Nuqta account (Settings → Nuqta Pro → sign in).
+# ---- moodots Pro: brew analytics, every theme and standby scene -----------------
+# Unlocked by an active moodots account (Settings → moodots Pro → sign in).
 PRO_DIR = Path(__file__).parent / "pro_pack"
 PRO_STATE_FILE = PRO_DIR / "state.json"
 PRO_GRACE_S = 30 * 86400           # stay unlocked offline for 30 days after the last good check
@@ -760,7 +760,7 @@ async def _sync_pro_pack() -> None:
     if _load_pro_pack(reload=updated):
         _pro_state_write(version=pack.get("version"))
         _analytics_cache.clear()
-        log.info("Nuqta Pro analytics %s (%s)", "updated" if updated else "installed", pack.get("version"))
+        log.info("moodots Pro analytics %s (%s)", "updated" if updated else "installed", pack.get("version"))
 
 
 async def refresh_pro(force: bool = False) -> bool:
@@ -1088,13 +1088,13 @@ async def ensure_awake():
     await asyncio.sleep(1.5)
 
 
-# Why recipes used to brew the wrong thing (found 2026-11-16 in brew_trace.log): Nuqta sent the
+# Why recipes used to brew the wrong thing (found 2026-11-16 in brew_trace.log): moodots sent the
 # recipe frames 0.15 s apart right after a tare, and the tare switches the machine to its scale screen.
 # The machine silently ignored 8102/8104/8001 there (no echo), so "Brew" (8002) ran whatever it had
 # loaded before: a single 30 ml pour, a 200 ml program, the grinder at its own setting instead of the
-# recipe's. The xBloom app does it differently and so does Nuqta now: 8022 "back to home" first, no
+# recipe's. The xBloom app does it differently and so does moodots now: 8022 "back to home" first, no
 # tare, and each frame waits for the machine's echo before the next. If the recipe isn't echoed,
-# Nuqta does not press Brew.
+# moodots does not press Brew.
 brewer_dirty = True           # water screen used and not yet confirmed closed (unknown at start-up)
 _brewer_quit_seen = 0.0       # when the machine last confirmed leaving the water screen
 _echo_seen: dict = {}         # code -> when the machine last sent a packet with that code (its echo/ACK)
@@ -1183,7 +1183,7 @@ async def _load_and_start(recipe) -> str | None:
 
 
 # "Brew without grinding": the machine ignores every documented "skip the grinder" signal (tested
-# 2026-11-14 on V12.0D.500), so Nuqta pours the recipe itself through the hot-water screen, which
+# 2026-11-14 on V12.0D.500), so moodots pours the recipe itself through the hot-water screen, which
 # needs no beans: each pour with its own amount, temperature, pattern and flow, then its wait.
 _nogrind = {"task": None, "stop": False}
 
@@ -1413,7 +1413,7 @@ class MachineState:
 
 # The recipe being brewed and what the user asked for, so a machine "wait" isn't shown as a pause
 brew_session = {"recipe": None, "user_paused": False, "user_stopped": False, "loaded": False}
-# The recipe of the brew in progress survives a Nuqta restart, so "brew without grinding" and the
+# The recipe of the brew in progress survives a moodots restart, so "brew without grinding" and the
 # screens still know what the machine is brewing.
 LAST_BREW_FILE = Path(__file__).parent / "last_brew.json"
 try:
@@ -1513,7 +1513,7 @@ def notify_finished(name: str, weight: float, demo: bool = False):
             import subprocess
             text = f"{name} is ready" if name else "Your coffee is ready"
             text = text.replace('"', "'").replace("\\", "")
-            subprocess.Popen(["osascript", "-e", f'display notification "{text}" with title "Nuqta" sound name "Glass"'],
+            subprocess.Popen(["osascript", "-e", f'display notification "{text}" with title "moodots" sound name "Glass"'],
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except Exception as e:
             log.warning("Mac notification failed: %s", e)
@@ -1672,7 +1672,7 @@ async def demo_control(action: str):
         demo_state.update(weight_g=0.0)
     await broadcast({"type": "state", "data": state.to_dict()})
 ws_clients: set[web.WebSocketResponse] = set()
-_hub_agent_ws = None  # the outbound connection to the Nuqta Cloud hub, when remote access is on
+_hub_agent_ws = None  # the outbound connection to the moodots Cloud hub, when remote access is on
 _hub_wake: asyncio.Event | None = None  # set on sign-in/sign-out so the agent loop reacts at once
 ble_client: bleak.BleakClient | None = None
 ble_lock = asyncio.Lock()
@@ -2046,7 +2046,7 @@ _TRACE_SENT = {CMD_HANDSHAKE, CMD_BACK_TO_HOME, CMD_TARE, CMD_BYPASS_DOSE, CMD_S
 
 
 def _trace_sent(frame: bytes) -> None:
-    """Note what Nuqta sends the machine (recipe loads, start/stop) in brew_trace.log."""
+    """Note what moodots sends the machine (recipe loads, start/stop) in brew_trace.log."""
     try:
         code = frame_code(frame)
         if code not in _TRACE_SENT:
@@ -2101,8 +2101,8 @@ async def handle_font(request):
 
 # Web app manifest: "Add to Home screen" then opens the dashboard fullscreen, without browser bars
 WEB_MANIFEST = {
-    "name": "Nuqta · نُقطة",
-    "short_name": "Nuqta",
+    "name": "moodots · مودوتس",
+    "short_name": "moodots",
     "start_url": "/",
     "scope": "/",
     "display": "fullscreen",
@@ -2111,8 +2111,8 @@ WEB_MANIFEST = {
     "background_color": "#12100E",
     "theme_color": "#12100E",
     "icons": [
-        {"src": "/nuqta-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
-        {"src": "/nuqta-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"},
+        {"src": "/moodots-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+        {"src": "/moodots-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"},
     ],
 }
 
@@ -2123,14 +2123,14 @@ async def handle_manifest(request):
 
 async def handle_app_icon(request):
     size = request.match_info["size"]
-    path = Path(__file__).parent / f"nuqta-icon-{size}.png"
+    path = Path(__file__).parent / f"moodots-icon-{size}.png"
     if size in ("192", "512") and path.exists():
         return web.FileResponse(path)
     raise web.HTTPNotFound()
 
 
-# ---- Recipes made or edited in Nuqta (Recipes page) ------------------------------------------
-# Kept on this computer in my_recipes.json. A Nuqta recipe with the same name as a starter or xBloom
+# ---- Recipes made or edited in moodots (Recipes page) ------------------------------------------
+# Kept on this computer in my_recipes.json. A moodots recipe with the same name as a starter or xBloom
 # recipe replaces it (that is how editing one of those works); deleting it brings the original back.
 MY_RECIPES_FILE = Path(__file__).parent / "my_recipes.json"
 my_recipes: list[dict] = []
@@ -2209,7 +2209,7 @@ async def _broadcast_recipes():
 
 
 async def handle_my_recipe_save(request):
-    """POST /api/my-recipes {recipe, type: hot|cold, old_name?}: create or update a Nuqta recipe."""
+    """POST /api/my-recipes {recipe, type: hot|cold, old_name?}: create or update a moodots recipe."""
     try:
         body = await request.json()
     except Exception:
@@ -2331,7 +2331,7 @@ async def _relay_http(ws, req: dict) -> None:
 async def _run_ws_session(ws, peer: str = ""):
     """Runs the dashboard protocol over an already-open ws. aiohttp's
     server-side WebSocketResponse (a local tab) and client-side
-    ClientWebSocketResponse (the outbound connection to the Nuqta Cloud
+    ClientWebSocketResponse (the outbound connection to the moodots Cloud
     hub, when remote access is on) both support send_json/send_str and
     async-for iteration the same way, so this one function drives either
     — the hub side is handled exactly like any other local client.
@@ -2645,7 +2645,7 @@ async def handle_schedules_delete(request):
 # App startup
 # ---------------------------------------------------------------------------
 async def cloud_agent_loop():
-    """When this app is signed in to a Nuqta Cloud hub and the account is
+    """When this app is signed in to a moodots Cloud hub and the account is
     active, keeps an outbound connection open to it so a phone away from
     home can reach this dashboard, and so brew-done pushes can go through
     the hub. Does nothing (just sleeps) when not configured, or when the
@@ -2675,18 +2675,18 @@ async def cloud_agent_loop():
                 async with http.ws_connect(hub_client.hub.agent_ws_url(), heartbeat=30) as ws:
                     _hub_agent_ws = ws
                     ws_clients.add(ws)
-                    log.info("Nuqta Cloud: connected to hub — remote access is on")
+                    log.info("moodots Cloud: connected to hub — remote access is on")
                     backoff = 2
                     try:
                         await _run_ws_session(ws)
                     finally:
                         ws_clients.discard(ws)
                         _hub_agent_ws = None
-                        log.info("Nuqta Cloud: disconnected from hub")
+                        log.info("moodots Cloud: disconnected from hub")
         except asyncio.CancelledError:
             raise
         except Exception as e:
-            log.warning("Nuqta Cloud: hub connection failed (%s) — retrying in %ss", e, backoff)
+            log.warning("moodots Cloud: hub connection failed (%s) — retrying in %ss", e, backoff)
 
         await asyncio.sleep(backoff)
         backoff = min(backoff * 2, 60)
@@ -3034,16 +3034,16 @@ async def handle_voice_shortcut(request):
     if request.method == "GET" and request.headers.get("Sec-Fetch-Dest") == "document":
         label = html_escape(request.match_info["action"].replace("-", " ").title())
         page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/><title>Nuqta · {label}</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"/><title>moodots · {label}</title>
 <style>body{{margin:0;min-height:100vh;display:grid;place-items:center;background:#12100E;color:#F3EDE4;font-family:-apple-system,'Segoe UI',sans-serif}}
 form{{text-align:center;padding:24px}}h1{{font-size:22px;margin:0 0 6px}}p{{color:#A89E93;font-size:14px;margin:0 0 20px}}
 button{{height:52px;padding:0 36px;border:0;border-radius:16px;background:#E3925A;color:#1A120B;font-size:17px;font-weight:700}}</style></head>
-<body><form method="post"><h1>{label}</h1><p>Nuqta · tap to run this on your machine</p><button>Run now</button></form></body></html>"""
+<body><form method="post"><h1>{label}</h1><p>moodots · tap to run this on your machine</p><button>Run now</button></form></body></html>"""
         return web.Response(text=page, content_type="text/html", headers={"Cache-Control": "no-store"})
     resp = await _voice_entry(request, action, "shortcut")
     if request.method == "POST" and request.headers.get("Sec-Fetch-Dest") == "document":
         ok = json.loads(resp.text or "{}").get("ok")
-        return web.Response(text=f"<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><body style='margin:0;min-height:100vh;display:grid;place-items:center;background:#12100E;color:#F3EDE4;font-family:-apple-system,sans-serif;font-size:20px'>{'Done ✓' if ok else 'Refused — see the Voice log in Nuqta'}</body>",
+        return web.Response(text=f"<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><body style='margin:0;min-height:100vh;display:grid;place-items:center;background:#12100E;color:#F3EDE4;font-family:-apple-system,sans-serif;font-size:20px'>{'Done ✓' if ok else 'Refused — see the Voice log in moodots'}</body>",
                             content_type="text/html", headers={"Cache-Control": "no-store"})
     return resp
 
@@ -3335,8 +3335,8 @@ async def handle_analytics(request):
 SERVICE_WORKER = """
 self.addEventListener('push', (e) => {
   let d = {}; try { d = e.data.json(); } catch (_) { d = { body: e.data && e.data.text() }; }
-  e.waitUntil(self.registration.showNotification(d.title || 'Nuqta', {
-    body: d.body || '', tag: d.tag || 'nuqta', icon: '/nuqta-icon-192.png', badge: '/nuqta-icon-192.png',
+  e.waitUntil(self.registration.showNotification(d.title || 'moodots', {
+    body: d.body || '', tag: d.tag || 'nuqta', icon: '/moodots-icon-192.png', badge: '/moodots-icon-192.png',
     renotify: true, data: { url: d.url || '/' },
   }));
 });
@@ -3361,7 +3361,7 @@ async def handle_capabilities(request):
                               "push": HAS_PUSH, "cloud": True, "alexa": True, "voice": True})
 
 
-# ---- Nuqta Cloud (optional remote access / push via a hub) -----------------
+# ---- moodots Cloud (optional remote access / push via a hub) -----------------
 
 async def handle_hub_status(request):
     status = await hub_client.hub.account_status()
@@ -3420,7 +3420,7 @@ async def handle_push_key(request):
 
 
 async def handle_push_subscribe(request):
-    if not pro_active():                      # device notifications are part of Nuqta Pro
+    if not pro_active():                      # device notifications are part of moodots Pro
         return web.json_response({"ok": False, "error": "pro_required"}, status=402)
     sub = await request.json()
     n = pusher.add(sub)
@@ -3440,7 +3440,7 @@ async def handle_push_test(request):
         return web.json_response({"ok": False, "error": "no subscriptions"}, status=400)
     import asyncio as _a
     n = await _a.get_event_loop().run_in_executor(None, lambda: pusher.send(
-        "Nuqta", "اختبار الإشعار · Test notification", "test", "/"))
+        "moodots", "اختبار الإشعار · Test notification", "test", "/"))
     return web.json_response({"ok": True, "sent": n})
 
 
@@ -3612,7 +3612,7 @@ async def handle_weather(request):
 
 
 # ---------------------------------------------------------------------------
-# Voice devices. Nuqta is a local Matter bridge (matter/bridge.mjs): Alexa,
+# Voice devices. moodots is a local Matter bridge (matter/bridge.mjs): Alexa,
 # Apple Home and Google Home pair with it on the home network with a setup
 # code. Only the devices chosen on the Voice page are offered.
 # ---------------------------------------------------------------------------
@@ -3644,7 +3644,7 @@ def _mac_hex() -> str:
 
 
 def voice_offered() -> list:
-    """Everything offered to Alexa (local bridge and the Nuqta skill): the devices
+    """Everything offered to Alexa (local bridge and the moodots skill): the devices
     and recipes chosen on the Voice page, nothing else."""
     out = []
     if not _voice.get("enabled", False):
@@ -3803,7 +3803,7 @@ async def handle_voice_matter_post(request):
 
 
 async def alexa_skill_request(ws, req: dict) -> None:
-    """A request from the Nuqta Alexa skill, passed on by the hub."""
+    """A request from the moodots Alexa skill, passed on by the hub."""
     rid, op = req.get("id"), req.get("op")
     reply = {"id": rid}
     offered = {e["id"]: e for e in voice_offered()}
@@ -3893,7 +3893,7 @@ _instance_lock = None
 
 
 def ensure_single_instance():
-    """Exit if another Nuqta server is already running on this Mac.
+    """Exit if another moodots server is already running on this Mac.
     The lock is released automatically when the process ends (or execs on /api/restart)."""
     global _instance_lock
     lock_path = Path(__file__).resolve().parent / ".nuqta-server.lock"
@@ -3909,7 +3909,7 @@ def ensure_single_instance():
     except OSError:
         _instance_lock.seek(0)
         other = _instance_lock.read().strip() or "?"
-        print(f"Nuqta server is already running (PID {other}). Stop it first, or use start-nuqta.command to replace it.")
+        print(f"moodots server is already running (PID {other}). Stop it first, or use start-moodots.command to replace it.")
         sys.exit(1)
     _instance_lock.seek(0)
     _instance_lock.truncate()
@@ -3949,7 +3949,8 @@ def main():
     app.router.add_get("/analytics", handle_index)
     app.router.add_get("/fonts/{name}", handle_font)
     app.router.add_get("/manifest.webmanifest", handle_manifest)
-    app.router.add_get("/nuqta-icon-{size}.png", handle_app_icon)
+    app.router.add_get("/moodots-icon-{size}.png", handle_app_icon)
+    app.router.add_get("/nuqta-icon-{size}.png", handle_app_icon)   # old name: home-screen icons saved before the rename
     app.router.add_get("/ws", handle_ws)
     app.router.add_get("/api/state", handle_state)
     # Cloud
@@ -4004,7 +4005,7 @@ def main():
 
     ip = get_local_ip()
     print(f"\n{'='*56}")
-    print(f"  xBloom Dashboard")
+    print(f"  moodots · dashboard for xBloom")
     print(f"  Local:   http://localhost:{port}")
     print(f"  Network: http://{ip}:{port}")
     public_url = os.environ.get("NUQTA_PUBLIC_URL", "")

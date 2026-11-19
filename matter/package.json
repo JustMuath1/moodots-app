@@ -2,7 +2,7 @@
   "name": "nuqta-matter",
   "private": true,
   "type": "module",
-  "description": "Nuqta as a local Matter bridge: Alexa, Apple Home and Google Home pair with it on the home network.",
+  "description": "moodots as a local Matter bridge: Alexa, Apple Home and Google Home pair with it on the home network.",
   "dependencies": {
     "@matter/main": "0.18.0"
   }

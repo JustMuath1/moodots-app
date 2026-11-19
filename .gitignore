@@ -37,7 +37,7 @@ tests/
 # Private Python environment created by the installers
 .venv/
 
-# Nuqta Pro files downloaded from the hub
+# moodots Pro files downloaded from the hub
 pro_pack/
 
 # Voice control settings and activity log
